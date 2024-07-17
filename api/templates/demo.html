@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Coevolution Portal API Demo</title>
+</head>
+<body>
+    <h1>Generate MSA</h1>
+    <form id="getMsa">
+        <label for="sequence">Enter a sequence:</label>
+        <input type="text" id="sequence" name="sequence" required>
+        <button type="submit">Submit</button>
+    </form>
+
+    <h1>Calculate DI</h1>
+    <form id="getDI">
+        <label for="sequence2">Enter a sequence:</label>
+        <input type="text" id="sequence2" name="sequence2" required>
+        <button type="submit">Submit</button>
+    </form>
+
+    <h1>Check Task Status</h1>
+    <div id="taskStatus">
+        <label for="taskId">Task ID:</label>
+        <input type="text" id="taskId" name="taskId" required>
+        <button type="button" id="checkStatus">Check Status</button>
+        <button type="button" id="getResult">Get Result</button>
+    </div>
+
+    <div id="result"></div>
+
+    <script>
+        document.getElementById('getMsa').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const seq = document.getElementById('sequence').value;
+
+            fetch('/api/msa/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ sequence: seq })
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log(data);
+                document.getElementById('taskId').value = data.task_id;
+            })
+            .catch(error => console.error('Error:', error));
+        });
+
+        document.getElementById('getDI').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const seq = document.getElementById('sequence').value;
+
+            fetch('/api/di/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ sequence: seq })
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('taskId').value = data.task_id;
+            })
+            .catch(error => console.error('Error:', error));
+        });
+
+        document.getElementById('checkStatus').addEventListener('click', function() {
+            const taskId = document.getElementById('taskId').value;
+
+            fetch(`/api/jobs/${taskId}/`)
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('result').innerText = "Status: " + data.state;
+                
+            })
+            .catch(error => console.error('Error:', error));
+        });
+
+        document.getElementById('getResult').addEventListener('click', function() {
+            const taskId = document.getElementById('taskId').value;
+
+            fetch(`/api/jobs/${taskId}/result/`)
+            .then(response => response.text())
+            .then(response => {
+                document.getElementById('result').innerText = "Result:\n" + response;
+            })
+            .catch(error => console.error('Error:', error));
+        });
+    </script>
+</body>
+</html>
