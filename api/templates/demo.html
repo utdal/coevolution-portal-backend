@@ -14,8 +14,8 @@
 
     <h1>Calculate DI</h1>
     <form id="getDI">
-        <label for="sequence2">Enter a sequence:</label>
-        <input type="text" id="sequence2" name="sequence2" required>
+        <label for="msaUpload">Upload MSA:</label>
+        <input type="file" id="msaUpload" name="msaUpload" required>
         <button type="submit">Submit</button>
     </form>
 
@@ -52,13 +52,23 @@
         document.getElementById('getDI').addEventListener('submit', function(event) {
             event.preventDefault();
             const seq = document.getElementById('sequence').value;
+            
+            const fileInput = document.getElementById('msaUpload');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                alert('No file selected');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('msa', file);
 
             fetch('/api/di/', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ sequence: seq })
+                body: formData
             })
             .then(response => response.json())
             .then(data => {

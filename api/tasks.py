@@ -1,7 +1,10 @@
 from celery import shared_task
 import time
+import os
 from typing import Union, TextIO, Literal
 import tempfile
+
+from dca.dca_class import dca
 
 @shared_task
 def get_msa_task(seq):
@@ -41,14 +44,19 @@ def hmmsearch_from_seed(seed_sequence: Union[str, TextIO], protein_name: str, ma
     if max_gaps.isnumeric():
         max_gaps = int(max_gaps)
 
-	/mfs/io/groups/morcos/g1petastore_transfer/share/hmmer/bin/hmmbuild $hmm_prof_fname $seed_seq_fname > /dev/null 2>&1
+	  /mfs/io/groups/morcos/g1petastore_transfer/share/hmmer/bin/hmmbuild $hmm_prof_fname $seed_seq_fname > /dev/null 2>&1
 	
     #	The profile exists. We can now do hmmsearch.
 
-	/mfs/io/groups/morcos/g1petastore_transfer/share/hmmer/bin/hmmsearch -A $sto_name $hmm_prof_fname $database > /dev/null 2>&1
+	  /mfs/io/groups/morcos/g1petastore_transfer/share/hmmer/bin/hmmsearch -A $sto_name $hmm_prof_fname $database > /dev/null 2>&1
 	
     # Convert to afa format
-	/mfs/io/groups/morcos/g1petastore_transfer/share/hmmer/bin/esl-reformat -o $afa_name afa $sto_name
+	  /mfs/io/groups/morcos/g1petastore_transfer/share/hmmer/bin/esl-reformat -o $afa_name afa $sto_name
 
-	/mfs/io/groups/morcos/g1petastore_transfer/share/hmmer/filter_pfam_args_updated.py $afa_name $max_gaps
+    /mfs/io/groups/morcos/g1petastore_transfer/share/hmmer/filter_pfam_args_updated.py $afa_name $max_gaps
 	
+def get_DI_pairs_task(msaPath):
+    protein_family = dca(msaPath)
+    protein_family.mean_field()
+    os.remove(msaPath)
+    return [(int(i), int(j), float(h)) for i, j, h in protein_family.DI]

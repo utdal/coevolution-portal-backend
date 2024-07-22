@@ -4,8 +4,8 @@ from django.shortcuts import render
 from celery.result import AsyncResult
 from .tasks import get_msa_task, get_DI_pairs_task
 import json
+import uuid
 
-@csrf_exempt
 def hello_world(request):
     return HttpResponse('hello world', status=200)
 
@@ -39,7 +39,16 @@ def get_msa(request):
 @csrf_exempt
 def get_DI_pairs(request):
     if request.method == 'POST':
-        data = json.loads(request.body)
-        seq = data.get('sequence', '')
-        task = get_DI_pairs_task.delay(seq)
-        return JsonResponse({'task_id': task.id}, status=202)
+        msa = request.FILES.get('msa')
+        if msa:
+            path = "temp/" + str(uuid.uuid4()) + ".fasta"
+            with open(path, 'wb+') as f:
+                for chunk in msa.chunks():
+                    f.write(chunk)
+            
+            task = get_DI_pairs_task.delay(path)
+            
+            return JsonResponse({'task_id': task.id}, status=202)
+        else:
+            return JsonResponse({'status': 'error', 'message': 'No file uploaded'}, status=400)
+        
