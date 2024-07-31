@@ -13,9 +13,11 @@ def get_msa_task(seq):
     return seq + "\nabc\ndef\nAdditional sequences..."
 
 @shared_task
-def get_DI_pairs_task(seq):
-    time.sleep(15)
-    return [(1, 2), (3, 4), (5, 6)]
+def get_DI_pairs_task(msaPath):
+    protein_family = dca(msaPath)
+    protein_family.mean_field()
+    os.remove(msaPath)
+    return [(int(i), int(j), float(h)) for i, j, h in protein_family.DI]
 
 @shared_task
 def hmmsearch_from_seed(seed_sequence: Union[str, TextIO], protein_name: str, max_gaps: int=10000):
@@ -66,8 +68,3 @@ def hmmsearch_from_seed(seed_sequence: Union[str, TextIO], protein_name: str, ma
     print(ali)
     
     produced_msa = hits.to_msa(alphabet=aa_alphabet)
-def get_DI_pairs_task(msaPath):
-    protein_family = dca(msaPath)
-    protein_family.mean_field()
-    os.remove(msaPath)
-    return [(int(i), int(j), float(h)) for i, j, h in protein_family.DI]
