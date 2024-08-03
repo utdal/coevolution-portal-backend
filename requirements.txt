@@ -2,3 +2,4 @@ django
 celery
 redis
 pyhmmer
+git+https://github.com/utdal/py-mfdca.git@master#egg=dca
