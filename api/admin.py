@@ -1,3 +1,8 @@
 from django.contrib import admin
 
-# Register your models here.
+from .models import APITask, MSA, DirectCouplingResults, ContactMap
+
+admin.site.register(APITask)
+admin.site.register(MSA)
+admin.site.register(DirectCouplingResults)
+admin.site.register(ContactMap)

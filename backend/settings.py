@@ -38,6 +38,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django_cleanup.apps.CleanupConfig',
+    'rest_framework',
     'api',
 ]
 
@@ -124,7 +126,21 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+MEDIA_ROOT = 'data/'
+MEDIA_URL = 'files/'
+
 # Celery settings
 CELERY_BROKER_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
 CELERY_RESULT_BACKEND = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+CELERY_TASK_TRACK_STARTED = True
+
+# REST Framework settings
+REST_FRAMEWORK = {
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.ScopedRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'long_task': '20/h'
+    }
+}

@@ -1,54 +1,94 @@
-from django.http import JsonResponse, HttpResponse
+from django.http import HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import render
-from celery.result import AsyncResult
-from .tasks import get_msa_task, get_DI_pairs_task
-import json
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from rest_framework import generics, status
 import uuid
+
+from .serializers import JobSerializer, GenerateMSASerializer, MSASerializer, ComputeDCASerializer, DirectCouplingSerializer
+from .models import APITask, MSA, DirectCouplingResults, ContactMap
+from .tasks import generate_msa_task, compute_dca_task
+
 
 def hello_world(request):
     return HttpResponse('hello world', status=200)
 
+
 def demo(request):
     return render(request, 'demo.html')
 
-@csrf_exempt
-def job_status(request, id):
-    task = AsyncResult(id)
-    response = {'state': task.state}
-    return JsonResponse(response)
 
-@csrf_exempt
-def job_result(request, id):
-    task = AsyncResult(id)
-    if task.state == 'SUCCESS':
-        return HttpResponse(task.result)
-    
-    response = {'state': task.state}
-    return JsonResponse(response, status=202)
+class ListJobs(generics.ListAPIView):
+    serializer_class = JobSerializer
+    permission_classes = [IsAuthenticated]
 
-@csrf_exempt
-def get_msa(request):
-    if request.method == 'POST':
-        data = json.loads(request.body)
-        seq = data.get('sequence', '')
-        task = get_msa_task.delay(seq)
-        return JsonResponse({'task_id': task.id}, status=202)
+    def get_queryset(self):
+        return APITask.objects.filter(user=self.request.user)
 
 
-@csrf_exempt
-def get_DI_pairs(request):
-    if request.method == 'POST':
-        msa = request.FILES.get('msa')
-        if msa:
-            path = "temp/" + str(uuid.uuid4()) + ".fasta"
-            with open(path, 'wb+') as f:
-                for chunk in msa.chunks():
-                    f.write(chunk)
-            
-            task = get_DI_pairs_task.delay(path)
-            
-            return JsonResponse({'task_id': task.id}, status=202)
-        else:
-            return JsonResponse({'status': 'error', 'message': 'No file uploaded'}, status=400)
-        
+class ViewJob(generics.RetrieveAPIView):
+    queryset = APITask.objects.all()
+    serializer_class = JobSerializer
+
+
+class GenerateMsa(APIView):
+    serializer_class = GenerateMSASerializer
+    throttle_scope = 'long_task'
+
+    def post(self, request, format=None):
+        params = GenerateMSASerializer(data=request.data)
+
+        if params.is_valid():
+            seed = params.validated_data.get('seed')
+            msaName = params.validated_data.get('msa_name', str(uuid.uuid4()))
+            task = generate_msa_task.start(seed, msaName, user=request.user)
+
+            resp = JobSerializer(task)
+            return Response(resp.data, status=status.HTTP_202_ACCEPTED)
+        return Response(params.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ComputeDca(APIView):
+    serializer_class = ComputeDCASerializer
+    throttle_scope = 'long_task'
+
+    def post(self, request, format=None):
+        params = ComputeDCASerializer(data=request.data)
+
+        if params.is_valid():
+            msa_id = params.validated_data.get('msa_id')
+            prereqs = params.validated_data.get('prereqs')
+            task = compute_dca_task.start(
+                msa_id, user=request.user, prereqs=prereqs)
+
+            resp = JobSerializer(task)
+            return Response(resp.data, status=status.HTTP_202_ACCEPTED)
+        return Response(params.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ListMsas(generics.ListAPIView):
+    serializer_class = MSASerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return MSA.objects.filter(user=self.request.user)
+
+
+class ViewMsa(generics.RetrieveAPIView):
+    queryset = MSA.objects.all()
+    serializer_class = MSASerializer
+
+
+class ListDcas(generics.ListAPIView):
+    serializer_class = DirectCouplingSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return DirectCouplingResults.objects.filter(user=self.request.user)
+
+
+class ViewDca(generics.RetrieveAPIView):
+    queryset = DirectCouplingResults.objects.all()
+    serializer_class = DirectCouplingSerializer

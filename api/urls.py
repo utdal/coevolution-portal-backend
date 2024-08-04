@@ -1,12 +1,23 @@
-from django.urls import path
-from .views import hello_world, demo, job_status, job_result, get_msa, get_DI_pairs
+from django.urls import path, include
+from rest_framework.urlpatterns import format_suffix_patterns
+
+from .views import hello_world, demo, ListJobs, ViewJob, GenerateMsa, ComputeDca, ListMsas, ViewMsa, ListDcas, ViewDca
 
 urlpatterns = [
     path('hello/', hello_world, name='hello'),
     path('demo/', demo, name='demo'),
-    path('jobs/<str:id>/', job_status, name='job-status'),
-    path('jobs/<str:id>/result/', job_result, name='job-result'),
 
-    path('msa/', get_msa, name='get-msa'),
-    path('di/', get_DI_pairs, name='get-di-pairs'),
+    path('jobs/', ListJobs.as_view()),
+    path('jobs/<str:pk>/', ViewJob.as_view()),
+
+    path('generate-msa/', GenerateMsa.as_view()),
+    path('compute-dca/', ComputeDca.as_view()),
+
+    path('msas/', ListMsas.as_view()),
+    path('msas/<str:pk>', ViewMsa.as_view()),
+
+    path('dcas/', ListDcas.as_view()),
+    path('dcas/<str:pk>', ViewDca.as_view()),
 ]
+
+urlpatterns = format_suffix_patterns(urlpatterns)

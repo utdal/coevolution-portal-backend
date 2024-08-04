@@ -5,7 +5,6 @@ services:
   celery:
     build: .
     command: celery -A backend worker --loglevel=info
-    user: celeryuser
     volumes:
       - .:/usr/src/app
     depends_on:
