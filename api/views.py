@@ -9,14 +9,14 @@ from rest_framework import generics, status
 import uuid
 
 from .serializers import (
-    JobSerializer,
+    TaskSerializer,
     GenerateMSASerializer,
     MSASerializer,
     ComputeDCASerializer,
-    DirectCouplingSerializer,
+    DCASerializer,
     UploadMSASerializer,
 )
-from .models import APITaskMeta, MultipleSequenceAlignment, DirectCouplingResults
+from .models import APITaskMeta, MultipleSequenceAlignment, DirectCouplingAnalysis
 from .tasks import generate_msa_task, compute_dca_task
 
 
@@ -28,17 +28,17 @@ def demo(request):
     return render(request, "demo.html")
 
 
-class ListJobs(generics.ListAPIView):
-    serializer_class = JobSerializer
+class ListTasks(generics.ListAPIView):
+    serializer_class = TaskSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         return APITaskMeta.objects.filter(user=self.request.user)
 
 
-class ViewJob(generics.RetrieveAPIView):
+class ViewTask(generics.RetrieveAPIView):
     queryset = APITaskMeta.objects.all()
-    serializer_class = JobSerializer
+    serializer_class = TaskSerializer
 
 
 class GenerateMsa(APIView):
@@ -53,7 +53,7 @@ class GenerateMsa(APIView):
             msaName = params.validated_data.get("msa_name", str(uuid.uuid4()))
             task = generate_msa_task.start(seed, msaName, user=request.user)
 
-            resp = JobSerializer(task)
+            resp = TaskSerializer(task)
             return Response(resp.data, status=status.HTTP_202_ACCEPTED)
         return Response(params.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -96,7 +96,7 @@ class ComputeDca(APIView):
             prereqs = params.validated_data.get("prereqs")
             task = compute_dca_task.start(msa_id, user=request.user, prereqs=prereqs)
 
-            resp = JobSerializer(task)
+            resp = TaskSerializer(task)
             return Response(resp.data, status=status.HTTP_202_ACCEPTED)
         return Response(params.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -115,15 +115,15 @@ class ViewMsa(generics.RetrieveAPIView):
 
 
 class ListDcas(generics.ListAPIView):
-    serializer_class = DirectCouplingSerializer
+    serializer_class = DCASerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return DirectCouplingResults.objects.filter(
+        return DirectCouplingAnalysis.objects.filter(
             user=self.request.user, expires__gt=timezone.now()
         )
 
 
 class ViewDca(generics.RetrieveAPIView):
-    queryset = DirectCouplingResults.objects.all()
-    serializer_class = DirectCouplingSerializer
+    queryset = DirectCouplingAnalysis.objects.all()
+    serializer_class = DCASerializer

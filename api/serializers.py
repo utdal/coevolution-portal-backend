@@ -1,10 +1,10 @@
 from rest_framework import serializers
 
 from .modelutils import NdarraySerializerField
-from .models import APITaskMeta, MultipleSequenceAlignment, DirectCouplingResults
+from .models import APITaskMeta, MultipleSequenceAlignment, DirectCouplingAnalysis
 
 
-class JobSerializer(serializers.ModelSerializer):
+class TaskSerializer(serializers.ModelSerializer):
     class Meta:
         model = APITaskMeta
         fields = [
@@ -25,11 +25,11 @@ class MSASerializer(serializers.ModelSerializer):
         fields = ["id", "user", "expires", "fasta", "depth", "cols", "quality"]
 
 
-class DirectCouplingSerializer(serializers.ModelSerializer):
+class DCASerializer(serializers.ModelSerializer):
     ranked_di = NdarraySerializerField()
 
     class Meta:
-        model = DirectCouplingResults
+        model = DirectCouplingAnalysis
         fields = ["id", "user", "m_eff", "ranked_di"]
 
 

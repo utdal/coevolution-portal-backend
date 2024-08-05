@@ -8,7 +8,7 @@ import tempfile
 import pyhmmer
 from dca import dca_class
 
-from .models import MultipleSequenceAlignment, APIDataObject, DirectCouplingResults, ContactMap
+from .models import MultipleSequenceAlignment, APIDataObject, DirectCouplingAnalysis, ContactMap
 from .taskutils import APITaskBase, handles_prereqs
 
 
@@ -50,7 +50,7 @@ def compute_dca_task(self, msa_id):
     protein_family = dca_class.dca(msa.fasta.path)
     protein_family.mean_field()
 
-    dca = DirectCouplingResults.objects.create(
+    dca = DirectCouplingAnalysis.objects.create(
         id=self.get_task_id(),
         user=self.get_user(),
         expires=timezone.now() + settings.DATA_EXPIRATION,

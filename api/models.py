@@ -47,7 +47,7 @@ class MultipleSequenceAlignment(APIDataObject):
     quality = models.IntegerField(choices=Qualities, default=Qualities.NA)
 
 
-class DirectCouplingResults(APIDataObject):
+class DirectCouplingAnalysis(APIDataObject):
     e_ij = NdarrayField(null=True)
     h_i = NdarrayField(null=True)
     ranked_di = NdarrayField(null=True)
@@ -57,6 +57,6 @@ class DirectCouplingResults(APIDataObject):
 class ContactMap(APIDataObject):
     pdb = models.CharField(max_length=50, blank=True)
     coupling_results = models.ForeignKey(
-        DirectCouplingResults, on_delete=models.CASCADE, null=True
+        DirectCouplingAnalysis, on_delete=models.CASCADE, null=True
     )
     map = NdarrayField(null=True)

@@ -4,8 +4,8 @@ from rest_framework.urlpatterns import format_suffix_patterns
 from .views import (
     hello_world,
     demo,
-    ListJobs,
-    ViewJob,
+    ListTasks,
+    ViewTask,
     GenerateMsa,
     UploadMsa,
     ComputeDca,
@@ -18,8 +18,8 @@ from .views import (
 urlpatterns = [
     path("hello/", hello_world, name="hello"),
     path("demo/", demo, name="demo"),
-    path("jobs/", ListJobs.as_view()),
-    path("jobs/<str:pk>/", ViewJob.as_view()),
+    path("tasks/", ListTasks.as_view()),
+    path("tasks/<str:pk>/", ViewTask.as_view()),
     path("generate-msa/", GenerateMsa.as_view()),
     path("upload-msa/", UploadMsa.as_view()),
     path("compute-dca/", ComputeDca.as_view()),
