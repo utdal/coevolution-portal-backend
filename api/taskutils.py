@@ -1,10 +1,9 @@
-import celery.app
 from django.utils import timezone
 import celery
 import uuid
 import functools
 
-from .models import User, APITask
+from .models import User, APITaskMeta
 
 
 class APITaskBase(celery.Task):
@@ -18,11 +17,8 @@ class APITaskBase(celery.Task):
         self._user_id = user.id
         self._task_id = str(uuid.uuid4())
 
-        task = APITask.objects.create(
-            id=self._task_id,
-            user=user,
-            name=self.name,
-            state='PENDING'
+        task = APITaskMeta.objects.create(
+            id=self._task_id, user=user, name=self.name, state="PENDING"
         )
 
         self.apply_async(args, kwargs, task_id=self._task_id)
@@ -36,28 +32,28 @@ class APITaskBase(celery.Task):
             return self.request.id
 
     def get_task(self):
-        return APITask.objects.get(id=self.get_task_id())
+        return APITaskMeta.objects.get(id=self.get_task_id())
 
     def get_user_id(self):
         try:
             return self._user_id
         except AttributeError:
-            return APITask.objects.get(id=self.get_task_id()).user.id
+            return APITaskMeta.objects.get(id=self.get_task_id()).user.id
 
     def get_user(self):
         return User.objects.get(id=self.get_user_id())
 
     def update_task_status(self):
-        task = APITask.objects.get(id=self.get_task_id())
+        task = APITaskMeta.objects.get(id=self.get_task_id())
         result = self.AsyncResult(self.get_task_id())
         task.state = result.state
 
-        if result.state == 'SUCCESS':
+        if result.state == "SUCCESS":
             task.time_ended = timezone.now()
             task.successful = True
             task.percent = 100
 
-        if result.state == 'FAILURE':
+        if result.state == "FAILURE":
             task.time_ended = timezone.now()
             task.successful = False
 
@@ -76,7 +72,7 @@ class APITaskBase(celery.Task):
         return super().on_retry(exc, task_id, args, kwargs, einfo)
 
     def set_progress(self, message=None, percent=None):
-        task_meta = APITask.objects.get(id=self.get_task_id())
+        task_meta = APITaskMeta.objects.get(id=self.get_task_id())
 
         if message is not None:
             task_meta.message = message
@@ -91,6 +87,8 @@ def handles_prereqs(fcn):
         if prereqs:
             for task_id in prereqs:
                 celery.current_app.AsyncResult(str(task_id)).get(
-                    disable_sync_subtasks=False)  # Not recommended!
+                    disable_sync_subtasks=False  # Not recommended! Not sure a better way..
+                )
         fcn(*args, **kwargs)
+
     return wrapper

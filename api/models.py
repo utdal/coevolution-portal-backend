@@ -6,7 +6,7 @@ from .modelutils import NdarrayField, get_user_spesific_path
 
 class CeleryTaskMeta(models.Model):
     id = models.UUIDField(primary_key=True)
-    state = models.CharField(max_length=20, default='UNKNOWN')
+    state = models.CharField(max_length=20, default="UNKNOWN")
     name = models.CharField(max_length=255, blank=True)
     time_started = models.DateTimeField(auto_now_add=True)
     time_ended = models.DateTimeField(null=True)
@@ -15,7 +15,7 @@ class CeleryTaskMeta(models.Model):
     successful = models.BooleanField(default=False)
 
 
-class APITask(CeleryTaskMeta):
+class APITaskMeta(CeleryTaskMeta):
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
 
 
@@ -27,10 +27,12 @@ class APIDataObject(models.Model):
 
 
 def get_msa_upload_to(instance, filename):
-    return get_user_spesific_path(filename, instance.user, subfolder='msa', suffix='.fasta')
+    return get_user_spesific_path(
+        filename, instance.user, subfolder="msa", suffix=".fasta"
+    )
 
 
-class MSA(APIDataObject):
+class MultipleSequenceAlignment(APIDataObject):
     class Qualities(models.IntegerChoices):
         NA = 0
         AWFUL = 1
@@ -55,5 +57,6 @@ class DirectCouplingResults(APIDataObject):
 class ContactMap(APIDataObject):
     pdb = models.CharField(max_length=50, blank=True)
     coupling_results = models.ForeignKey(
-        DirectCouplingResults, on_delete=models.CASCADE, null=True)
+        DirectCouplingResults, on_delete=models.CASCADE, null=True
+    )
     map = NdarrayField(null=True)

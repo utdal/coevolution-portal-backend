@@ -1,20 +1,28 @@
 from rest_framework import serializers
 
 from .modelutils import NdarraySerializerField
-from .models import APITask, MSA, DirectCouplingResults, ContactMap
+from .models import APITaskMeta, MultipleSequenceAlignment, DirectCouplingResults
 
 
 class JobSerializer(serializers.ModelSerializer):
     class Meta:
-        model = APITask
-        fields = ['id', 'user', 'state', 'time_started',
-                  'time_ended', 'message', 'percent', 'successful']
+        model = APITaskMeta
+        fields = [
+            "id",
+            "user",
+            "state",
+            "time_started",
+            "time_ended",
+            "message",
+            "percent",
+            "successful",
+        ]
 
 
 class MSASerializer(serializers.ModelSerializer):
     class Meta:
-        model = MSA
-        fields = ['id', 'user', 'expires', 'fasta', 'depth', 'cols', 'quality']
+        model = MultipleSequenceAlignment
+        fields = ["id", "user", "expires", "fasta", "depth", "cols", "quality"]
 
 
 class DirectCouplingSerializer(serializers.ModelSerializer):
@@ -22,23 +30,21 @@ class DirectCouplingSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = DirectCouplingResults
-        fields = ['id', 'user', 'm_eff', 'ranked_di']
+        fields = ["id", "user", "m_eff", "ranked_di"]
 
 
 class GenerateMSASerializer(serializers.Serializer):
     seed = serializers.CharField(max_length=700)
     msa_name = serializers.CharField(max_length=100, required=False)
-    prereqs = serializers.ListField(
-        child=serializers.UUIDField(), required=False)
+    prereqs = serializers.ListField(child=serializers.UUIDField(), required=False)
 
 
 class UploadMSASerializer(serializers.ModelSerializer):
     class Meta:
-        model = MSA
-        fields = ['fasta']
+        model = MultipleSequenceAlignment
+        fields = ["fasta"]
 
 
 class ComputeDCASerializer(serializers.Serializer):
     msa_id = serializers.UUIDField()
-    prereqs = serializers.ListField(
-        child=serializers.UUIDField(), required=False)
+    prereqs = serializers.ListField(child=serializers.UUIDField(), required=False)

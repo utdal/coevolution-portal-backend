@@ -1,15 +1,14 @@
-from django.core.files import File
 from django.conf import settings
 from django.utils import timezone
+from django.core.files import File
 from celery import shared_task
 import time
 from typing import Union, TextIO
 import tempfile
-import numpy as np
 import pyhmmer
 from dca import dca_class
 
-from .models import MSA, APIDataObject, DirectCouplingResults, ContactMap
+from .models import MultipleSequenceAlignment, APIDataObject, DirectCouplingResults, ContactMap
 from .taskutils import APITaskBase, handles_prereqs
 
 
@@ -24,17 +23,18 @@ def generate_msa_task(self, seed, msa_name):
     time.sleep(30)
     self.set_progress(message="Finishing", percent=90)
 
-    with tempfile.TemporaryFile('a+') as f:
+    with tempfile.TemporaryFile("a+") as f:
         f.write(
-            f">Dummy MSA\n{seed}\n>Sequence2\nATGCGTACGTAGCTAGCTAG\n>Sequence3\nATGCGTACGTA-CTAGCTAG")
+            f">Dummy MSA\n{seed}\n>Sequence2\nATGCGTACGTAGCTAGCTAG\n>Sequence3\nATGCGTACGTA-CTAGCTAG"
+        )
 
-        msa = MSA.objects.create(
+        msa = MultipleSequenceAlignment.objects.create(
             id=self.get_task_id(),
             user=self.get_user(),
-            expires=timezone.now() + settings.DATA_EXPIRATION
+            expires=timezone.now() + settings.DATA_EXPIRATION,
         )
         msa.fasta = File(f, msa_name)
-        msa.quality = MSA.Qualities.GOOD
+        msa.quality = MultipleSequenceAlignment.Qualities.GOOD
         msa.depth = 3
         msa.cols = len(seed)
         msa.save()
@@ -43,19 +43,17 @@ def generate_msa_task(self, seed, msa_name):
 @shared_task(base=APITaskBase, bind=True)
 @handles_prereqs
 def compute_dca_task(self, msa_id):
-    msa = MSA.objects.filter(
-        id=msa_id,
-        user=self.get_user(),
-        expires__gt=timezone.now()
+    msa = MultipleSequenceAlignment.objects.filter(
+        id=msa_id, user=self.get_user(), expires__gt=timezone.now()
     ).first()
-    
+
     protein_family = dca_class.dca(msa.fasta.path)
     protein_family.mean_field()
 
     dca = DirectCouplingResults.objects.create(
         id=self.get_task_id(),
         user=self.get_user(),
-        expires=timezone.now() + settings.DATA_EXPIRATION
+        expires=timezone.now() + settings.DATA_EXPIRATION,
     )
     dca.e_ij = protein_family.couplings
     dca.h_i = protein_family.localfields
@@ -65,7 +63,9 @@ def compute_dca_task(self, msa_id):
 
 
 @shared_task
-def hmmsearch_from_seed(seed_sequence: Union[str, TextIO], protein_name: str, max_gaps: int = 10000):
+def hmmsearch_from_seed(
+    seed_sequence: Union[str, TextIO], protein_name: str, max_gaps: int = 10000
+):
     # alphabet used in production of MSAs and HMMs.
     aa_alphabet = pyhmmer.easel.Alphabet.amino()
     # If a real HMM profile is found, seed sequence is ignored. Otherwise, it is required.
@@ -79,7 +79,7 @@ def hmmsearch_from_seed(seed_sequence: Union[str, TextIO], protein_name: str, ma
         tmp = tempfile.NamedTemporaryFile()
         # Open the file for writing.
         tmp.name = ""
-        with open(tmp.name, 'w') as f:
+        with open(tmp.name, "w") as f:
             f.write(seed_sequence)
         MSA_fname = tmp.name
     else:
@@ -96,7 +96,9 @@ def hmmsearch_from_seed(seed_sequence: Union[str, TextIO], protein_name: str, ma
         max_gaps = int(max_gaps)
 
         # /mfs/io/groups/morcos/g1petastore_transfer/share/hmmer/bin/hmmbuild $hmm_prof_fname $seed_seq_fname > /dev/null 2>&1
-    with pyhmmer.easel.MSAFile(MSA_fname, digital=False, alphabet=aa_alphabet) as msa_fs:
+    with pyhmmer.easel.MSAFile(
+        MSA_fname, digital=False, alphabet=aa_alphabet
+    ) as msa_fs:
         loaded_seed: pyhmmer.easel.TextMSA = msa_fs.read()
         # Must convert to a digital MSA according to https://pyhmmer.readthedocs.io/en/stable/examples/msa_to_hmm.html
         loaded_seed = loaded_seed.digitize(alphabet=aa_alphabet)
@@ -106,14 +108,14 @@ def hmmsearch_from_seed(seed_sequence: Union[str, TextIO], protein_name: str, ma
         hmm, _, _ = builder.build_msa(loaded_seed, background)
 
     # The profile exists. We can now do hmmsearch.
-    pipeline = pyhmmer.plan7.Pipeline(
-        alphabet=aa_alphabet, background=background)
+    pipeline = pyhmmer.plan7.Pipeline(alphabet=aa_alphabet, background=background)
     with pyhmmer.easel.SequenceFile("", digital=True, alphabet=aa_alphabet) as seq_file:
         hits = pipeline.search_hmm(hmm, seq_file)
     ali = hits[0].domains[0].alignment
     print(ali)
 
     produced_msa = hits.to_msa(alphabet=aa_alphabet)
+
 
 @shared_task
 def cleanup_expired_data():

@@ -1,17 +1,17 @@
-import uuid
 from django.db import models
 from django.forms import ValidationError
 from rest_framework import serializers
 import io
 import numpy as np
 from pathlib import PurePath
+import uuid
 
 
 def get_user_spesific_path(filename, user, subfolder=None, suffix=None):
     if user and user.is_authenticated:
-        path = PurePath('users', str(user.id))
+        path = PurePath("users", str(user.id))
     else:
-        path = PurePath('anonymous', str(uuid.uuid4()))
+        path = PurePath("anonymous", str(uuid.uuid4()))
     if subfolder is not None:
         path = path / subfolder
     path = path / filename
