@@ -1,13 +1,16 @@
 from django.http import HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import render
+from django.utils import timezone
+from django.conf import settings
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import generics, status
+from rest_framework.parsers import JSONParser, MultiPartParser
 import uuid
 
-from .serializers import JobSerializer, GenerateMSASerializer, MSASerializer, ComputeDCASerializer, DirectCouplingSerializer
+from .serializers import JobSerializer, GenerateMSASerializer, MSASerializer, ComputeDCASerializer, DirectCouplingSerializer, UploadMSASerializer
 from .models import APITask, MSA, DirectCouplingResults, ContactMap
 from .tasks import generate_msa_task, compute_dca_task
 
@@ -50,6 +53,33 @@ class GenerateMsa(APIView):
         return Response(params.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+class UploadMsa(APIView):
+    serializer_class = UploadMSASerializer
+    parser_classes = [MultiPartParser]
+    throttle_scope = 'long_task'
+
+    def post(self, request, format=None):
+        serializer = UploadMSASerializer(data=request.data)
+
+        if serializer.is_valid():
+            if request.user.is_authenticated:
+                msa = serializer.save(
+                    id=str(uuid.uuid4()),
+                    user=request.user,
+                    expires=timezone.now() + settings.DATA_EXPIRATION
+                )
+            else:
+                msa = serializer.save(
+                    id=str(uuid.uuid4()),
+                    user=None,
+                    expires=timezone.now() + settings.DATA_EXPIRATION
+                )
+
+            resp = MSASerializer(msa)
+            return Response(resp.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
 class ComputeDca(APIView):
     serializer_class = ComputeDCASerializer
     throttle_scope = 'long_task'
@@ -73,7 +103,7 @@ class ListMsas(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return MSA.objects.filter(user=self.request.user)
+        return MSA.objects.filter(user=self.request.user, expires__gt=timezone.now())
 
 
 class ViewMsa(generics.RetrieveAPIView):
@@ -86,7 +116,10 @@ class ListDcas(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return DirectCouplingResults.objects.filter(user=self.request.user)
+        return DirectCouplingResults.objects.filter(
+            user=self.request.user,
+            expires__gt=timezone.now()
+        )
 
 
 class ViewDca(generics.RetrieveAPIView):

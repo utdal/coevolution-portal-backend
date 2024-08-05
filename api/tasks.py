@@ -1,4 +1,6 @@
 from django.core.files import File
+from django.conf import settings
+from django.utils import timezone
 from celery import shared_task
 import time
 from typing import Union, TextIO
@@ -7,7 +9,7 @@ import numpy as np
 import pyhmmer
 from dca import dca_class
 
-from .models import MSA, DirectCouplingResults, ContactMap
+from .models import MSA, APIDataObject, DirectCouplingResults, ContactMap
 from .taskutils import APITaskBase, handles_prereqs
 
 
@@ -26,7 +28,11 @@ def generate_msa_task(self, seed, msa_name):
         f.write(
             f">Dummy MSA\n{seed}\n>Sequence2\nATGCGTACGTAGCTAGCTAG\n>Sequence3\nATGCGTACGTA-CTAGCTAG")
 
-        msa = MSA.objects.create(id=self.get_task_id(), user=self.get_user())
+        msa = MSA.objects.create(
+            id=self.get_task_id(),
+            user=self.get_user(),
+            expires=timezone.now() + settings.DATA_EXPIRATION
+        )
         msa.fasta = File(f, msa_name)
         msa.quality = MSA.Qualities.GOOD
         msa.depth = 3
@@ -37,29 +43,25 @@ def generate_msa_task(self, seed, msa_name):
 @shared_task(base=APITaskBase, bind=True)
 @handles_prereqs
 def compute_dca_task(self, msa_id):
-    msa = MSA.objects.get(id=msa_id)
+    msa = MSA.objects.filter(
+        id=msa_id,
+        user=self.get_user(),
+        expires__gt=timezone.now()
+    ).first()
+    
     protein_family = dca_class.dca(msa.fasta.path)
     protein_family.mean_field()
 
     dca = DirectCouplingResults.objects.create(
-        id=self.get_task_id(), user=self.get_user())
+        id=self.get_task_id(),
+        user=self.get_user(),
+        expires=timezone.now() + settings.DATA_EXPIRATION
+    )
     dca.e_ij = protein_family.couplings
     dca.h_i = protein_family.localfields
     dca.m_eff = protein_family.Meff
     dca.ranked_di = protein_family.DI
     dca.save()
-
-
-@shared_task(base=APITaskBase, bind=True)
-@handles_prereqs
-def get_contact_map_task(self, dca_id, pdb_id):
-    dca = DirectCouplingResults.objects.get(pk=dca_id)
-
-    map = ContactMap.objects.create()
-    map.pdb = pdb_id
-    map.coupling_results = dca
-    map.map = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
-    map.save()
 
 
 @shared_task
@@ -112,3 +114,13 @@ def hmmsearch_from_seed(seed_sequence: Union[str, TextIO], protein_name: str, ma
     print(ali)
 
     produced_msa = hits.to_msa(alphabet=aa_alphabet)
+
+@shared_task
+def cleanup_expired_data():
+    old = APIDataObject.objects.filter(expires__lte=timezone.now())
+    if len(old):
+        if settings.DELETE_EXPIRED_DATA:
+            print(f"{len(old)} objects have expired. Deleting...")
+            old.delete()
+        else:
+            print(f"{len(old)} objects have expired.")

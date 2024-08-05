@@ -23,7 +23,7 @@ class APIDataObject(models.Model):
     id = models.UUIDField(primary_key=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
     created = models.DateTimeField(auto_now_add=True)
-    expires = models.DateTimeField(null=True)
+    expires = models.DateTimeField()
 
 
 def get_msa_upload_to(instance, filename):
@@ -39,7 +39,7 @@ class MSA(APIDataObject):
         GOOD = 4
         GREAT = 5
 
-    fasta = models.FileField(upload_to=get_msa_upload_to, null=True)
+    fasta = models.FileField(upload_to=get_msa_upload_to, null=True, unique=True)
     depth = models.IntegerField(default=0)
     cols = models.IntegerField(default=0)
     quality = models.IntegerField(choices=Qualities, default=Qualities.NA)

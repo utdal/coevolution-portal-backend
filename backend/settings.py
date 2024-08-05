@@ -12,6 +12,8 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 
 import os
 from pathlib import Path
+from datetime import timedelta
+from celery.schedules import crontab
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -126,14 +128,21 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-MEDIA_ROOT = 'data/'
 MEDIA_URL = 'files/'
+MEDIA_ROOT = BASE_DIR / 'media'
 
 # Celery settings
 CELERY_BROKER_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
 CELERY_RESULT_BACKEND = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 CELERY_TASK_TRACK_STARTED = True
+
+CELERY_BEAT_SCHEDULE = {
+    "sample_task": {
+        "task": "api.tasks.cleanup_expired_data",
+        "schedule": crontab(minute=0),
+    },
+}
 
 # REST Framework settings
 REST_FRAMEWORK = {
@@ -144,3 +153,7 @@ REST_FRAMEWORK = {
         'long_task': '20/h'
     }
 }
+
+# Other settings
+DATA_EXPIRATION = timedelta(days=1)
+DELETE_EXPIRED_DATA = False
