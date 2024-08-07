@@ -3,9 +3,7 @@
 This backend uses Django to host the API. Celery is used to manage tasks and Redis is used by Celery.
 
 **To run:**
-* `python manage.py makemigrations`
-* `python manage.py migrate`
-* `docker compose up --build`
+* `docker compose up`
 
 Then go to `localhost:8000/api/`
 
