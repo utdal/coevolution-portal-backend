@@ -11,8 +11,10 @@ class TaskSerializer(serializers.ModelSerializer):
             "id",
             "user",
             "state",
+            "name",
             "time_started",
             "time_ended",
+            "expires",
             "message",
             "percent",
             "successful",
@@ -22,29 +24,31 @@ class TaskSerializer(serializers.ModelSerializer):
 class MSASerializer(serializers.ModelSerializer):
     class Meta:
         model = MultipleSequenceAlignment
-        fields = ["id", "user", "expires", "fasta", "depth", "cols", "quality"]
+        fields = [
+            "id",
+            "user",
+            "created",
+            "expires",
+            "fasta",
+            "depth",
+            "cols",
+            "quality",
+        ]
+        read_only_fields = ["id", "user", "created", "expires"]
 
 
 class DCASerializer(serializers.ModelSerializer):
-    ranked_di = NdarraySerializerField()
+    ranked_di = NdarraySerializerField(required=False)
 
     class Meta:
         model = DirectCouplingAnalysis
-        fields = ["id", "user", "m_eff", "ranked_di"]
+        fields = ["id", "user", "created", "expires", "m_eff", "ranked_di"]
 
 
 class GenerateMSASerializer(serializers.Serializer):
     seed = serializers.CharField(max_length=700)
-    msa_name = serializers.CharField(max_length=100, required=False)
-    prereqs = serializers.ListField(child=serializers.UUIDField(), required=False)
-
-
-class UploadMSASerializer(serializers.ModelSerializer):
-    class Meta:
-        model = MultipleSequenceAlignment
-        fields = ["fasta"]
+    msa_name = serializers.CharField(max_length=255, required=False)
 
 
 class ComputeDCASerializer(serializers.Serializer):
     msa_id = serializers.UUIDField()
-    prereqs = serializers.ListField(child=serializers.UUIDField(), required=False)

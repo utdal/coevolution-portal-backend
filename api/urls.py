@@ -1,32 +1,38 @@
 from django.urls import path, include
 from rest_framework.urlpatterns import format_suffix_patterns
+from rest_framework.routers import DefaultRouter
+from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 
 from .views import (
+    api_home,
     hello_world,
     demo,
-    ListTasks,
-    ViewTask,
+    TaskViewSet,
+    MSAViewSet,
+    DCAViewSet,
     GenerateMsa,
-    UploadMsa,
     ComputeDca,
-    ListMsas,
-    ViewMsa,
-    ListDcas,
-    ViewDca,
 )
 
 urlpatterns = [
-    path("hello/", hello_world, name="hello"),
-    path("demo/", demo, name="demo"),
-    path("tasks/", ListTasks.as_view()),
-    path("tasks/<str:pk>/", ViewTask.as_view()),
+    # Basic pages
+    path("", api_home),
+    path("hello/", hello_world),
+    path("demo/", demo),
+    # Login /logout
+    path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
+    # API Docs
+    path('schema/', SpectacularAPIView.as_view(), name='schema'),
+    path('schema/swagger-ui/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+    path('schema/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
+    # API endpoints
     path("generate-msa/", GenerateMsa.as_view()),
-    path("upload-msa/", UploadMsa.as_view()),
     path("compute-dca/", ComputeDca.as_view()),
-    path("msas/", ListMsas.as_view()),
-    path("msas/<str:pk>", ViewMsa.as_view()),
-    path("dcas/", ListDcas.as_view()),
-    path("dcas/<str:pk>", ViewDca.as_view()),
 ]
 
-urlpatterns = format_suffix_patterns(urlpatterns)
+router = DefaultRouter()
+router.register("tasks", TaskViewSet, basename='task')
+router.register("msas", MSAViewSet, basename='msa')
+router.register("dcas", DCAViewSet, basename='dca')
+
+urlpatterns += router.urls

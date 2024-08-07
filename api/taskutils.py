@@ -14,7 +14,7 @@ class APITaskBase(celery.Task):
     # * Tasks should save results in database and return nothing
 
     def start(self, *args, user=None, **kwargs):
-        self._user_id = user.id
+        self._user_id = None if user is None else user.id
         self._task_id = str(uuid.uuid4())
 
         task = APITaskMeta.objects.create(
@@ -34,14 +34,15 @@ class APITaskBase(celery.Task):
     def get_task(self):
         return APITaskMeta.objects.get(id=self.get_task_id())
 
-    def get_user_id(self):
+    def get_user(self):
         try:
             return self._user_id
         except AttributeError:
-            return APITaskMeta.objects.get(id=self.get_task_id()).user.id
+            return APITaskMeta.objects.get(id=self.get_task_id()).user
 
-    def get_user(self):
-        return User.objects.get(id=self.get_user_id())
+    def get_user_id(self):
+        user = self.get_user()
+        return None if user is None else user.id
 
     def update_task_status(self):
         task = APITaskMeta.objects.get(id=self.get_task_id())
@@ -79,16 +80,3 @@ class APITaskBase(celery.Task):
         if percent is not None:
             task_meta.percent = percent
         task_meta.save()
-
-
-def handles_prereqs(fcn):
-    @functools.wraps(fcn)
-    def wrapper(*args, prereqs=None, **kwargs):
-        if prereqs:
-            for task_id in prereqs:
-                celery.current_app.AsyncResult(str(task_id)).get(
-                    disable_sync_subtasks=False  # Not recommended! Not sure a better way..
-                )
-        fcn(*args, **kwargs)
-
-    return wrapper

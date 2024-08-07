@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django_cleanup.apps.CleanupConfig',
     'rest_framework',
+    'drf_spectacular',
     'api',
 ]
 
@@ -151,9 +152,19 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_THROTTLE_RATES': {
         'long_task': '20/h'
-    }
+    },
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+
+# DRF Spectular settings
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Coevolution API',
+    'DESCRIPTION': 'Coevolution API',
+    'VERSION': '1.0.0',
+    'COMPONENT_SPLIT_REQUEST': True,
 }
 
 # Other settings
 DATA_EXPIRATION = timedelta(days=1)
+TASK_EXPIRATION = timedelta(days=1)
 DELETE_EXPIRED_DATA = False

@@ -8,19 +8,18 @@ import tempfile
 import pyhmmer
 from dca import dca_class
 
-from .models import MultipleSequenceAlignment, APIDataObject, DirectCouplingAnalysis, ContactMap
-from .taskutils import APITaskBase, handles_prereqs
+from .models import APITaskMeta, CeleryTaskMeta, APIDataObject, MultipleSequenceAlignment, DirectCouplingAnalysis
+from .taskutils import APITaskBase
 
 
 @shared_task(base=APITaskBase, bind=True)
-@handles_prereqs
-def generate_msa_task(self, seed, msa_name):
+def generate_msa_task(self, seed, msa_name=None):
     self.set_progress(message="Starting", percent=0)
     time.sleep(5)
     self.set_progress(message="Working", percent=30)
     time.sleep(5)
     self.set_progress(message="Taking a break", percent=60)
-    time.sleep(30)
+    time.sleep(20)
     self.set_progress(message="Finishing", percent=90)
 
     with tempfile.TemporaryFile("a+") as f:
@@ -33,6 +32,9 @@ def generate_msa_task(self, seed, msa_name):
             user=self.get_user(),
             expires=timezone.now() + settings.DATA_EXPIRATION,
         )
+        if msa_name is None:
+            msa_name = self.get_task_id()
+        
         msa.fasta = File(f, msa_name)
         msa.quality = MultipleSequenceAlignment.Qualities.GOOD
         msa.depth = 3
@@ -41,11 +43,12 @@ def generate_msa_task(self, seed, msa_name):
 
 
 @shared_task(base=APITaskBase, bind=True)
-@handles_prereqs
 def compute_dca_task(self, msa_id):
-    msa = MultipleSequenceAlignment.objects.filter(
-        id=msa_id, user=self.get_user(), expires__gt=timezone.now()
-    ).first()
+    prev_task = CeleryTaskMeta.objects.filter(id=msa_id)
+    if prev_task.exists():
+        prev_task.first().wait_for_completion()
+    
+    msa = MultipleSequenceAlignment.objects.get(id=msa_id)
 
     protein_family = dca_class.dca(msa.fasta.path)
     protein_family.mean_field()
@@ -119,10 +122,13 @@ def hmmsearch_from_seed(
 
 @shared_task
 def cleanup_expired_data():
-    old = APIDataObject.objects.filter(expires__lte=timezone.now())
-    if len(old):
+    old_tasks = APITaskMeta.objects.filter(expires__lte=timezone.now())
+    old_data = APIDataObject.objects.filter(expires__lte=timezone.now())
+    
+    if len(old_tasks) or len(old_data):
+        print(f"{len(old_tasks)} tasks and {len(old_data)} objects have expired.")
+
         if settings.DELETE_EXPIRED_DATA:
-            print(f"{len(old)} objects have expired. Deleting...")
-            old.delete()
-        else:
-            print(f"{len(old)} objects have expired.")
+            print("Deleting...")
+            old_tasks.delete()
+            old_data.delete()
