@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Coevolution API Home</title>
+</head>
+
+<body>
+    <b>
+        {% if user.is_authenticated %}
+        <p>Welcome, {{ user.get_username }}!</p>
+        {% else %}
+        <p>Welcome, anonymous user.</p>
+        {% endif %}
+    </b>
+
+    <ul>
+        <li><a href="hello/" target="_blank">Hello World</a></li>
+        <li><a href="schema/swagger-ui/" target="_blank">API Documentation</a></li>
+
+        {% if user.is_authenticated %}
+        <li><a href="#" onclick="document.getElementById('logoutForm').submit()">Logout</a></li>
+        {% else %}
+        <li><a href="api-auth/login/?next={{ request.path }}">Login</a></li>
+        {% endif %}
+
+        <li><a href="generate-msa/" target="_blank">Generate MSA</a></li>
+        <li><a href="compute-dca/" target="_blank">Compute DCA</a></li>
+
+        {% if user.is_authenticated %}
+        <li><a href="tasks/" target="_blank">Your tasks</a></li>
+        <li><a href="msas/" target="_blank">Your MSAs</a></li>
+        <li><a href="dcas/" target="_blank">Your DCAs</a></li>
+        {% endif %}
+    </ul>
+
+
+    <form id="logoutForm" method="post" action="api-auth/logout/?next={{ request.path }}" style="display: none;">
+        {% csrf_token %}
+        <button type="submit">Logout</button>
+    </form>
+</body>
+
+</html>

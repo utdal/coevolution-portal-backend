@@ -1,4 +1,9 @@
 django
 celery
 redis
+djangorestframework
+django-cleanup
+numpy
 pyhmmer
+git+https://github.com/utdal/py-mfdca.git@master#egg=dca
+drf-spectacular
