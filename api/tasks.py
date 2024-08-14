@@ -14,17 +14,18 @@ from .taskutils import APITaskBase
 
 @shared_task(base=APITaskBase, bind=True)
 def generate_msa_task(self, seed, msa_name=None):
-    self.set_progress(message="Starting", percent=0)
-    time.sleep(5)
-    self.set_progress(message="Working", percent=30)
-    time.sleep(5)
+    self.set_progress(message="Getting ready", percent=0)
+    time.sleep(10)
+    self.set_progress(message="Working on it", percent=30)
+    time.sleep(10)
     self.set_progress(message="Taking a break", percent=60)
     time.sleep(20)
-    self.set_progress(message="Finishing", percent=90)
+    self.set_progress(message="Getting back to it", percent=90)
+    time.sleep(10)
 
     with tempfile.TemporaryFile("a+") as f:
         f.write(
-            f">Dummy MSA\n{seed}\n>Sequence2\nATGCGTACGTAGCTAGCTAG\n>Sequence3\nATGCGTACGTA-CTAGCTAG"
+            f">Dummy MSA\n{seed}\n>Sequence2\n{seed}\n>Sequence3\n{seed[::-1]}"
         )
 
         msa = MultipleSequenceAlignment.objects.create(
@@ -40,16 +41,20 @@ def generate_msa_task(self, seed, msa_name=None):
         msa.depth = 3
         msa.cols = len(seed)
         msa.save()
+    
+    self.set_progress(message="Finally done!", percent=90)
 
 
 @shared_task(base=APITaskBase, bind=True)
 def compute_dca_task(self, msa_id):
     prev_task = CeleryTaskMeta.objects.filter(id=msa_id)
     if prev_task.exists():
+        self.set_progress(message="Waiting for MSA", percent=0)
         prev_task.first().wait_for_completion()
     
     msa = MultipleSequenceAlignment.objects.get(id=msa_id)
 
+    self.set_progress(message="Running DCA", percent=10)
     protein_family = dca_class.dca(msa.fasta.path)
     protein_family.mean_field()
 
@@ -63,6 +68,7 @@ def compute_dca_task(self, msa_id):
     dca.m_eff = protein_family.Meff
     dca.ranked_di = protein_family.DI
     dca.save()
+    self.set_progress(message="", percent=100)
 
 
 @shared_task
