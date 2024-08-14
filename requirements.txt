@@ -8,3 +8,4 @@ pyhmmer
 git+https://github.com/utdal/py-mfdca.git@master#egg=dca
 drf-spectacular
 django-cors-headers
+gunicorn

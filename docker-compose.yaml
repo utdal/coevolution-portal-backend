@@ -11,6 +11,8 @@ services:
       - redis
     environment:
       - REDIS_URL=redis://redis:6379/0
+    env_file:
+      - .env
     
   celery-beat:
     build: .
@@ -21,6 +23,8 @@ services:
       - redis
     environment:
       - REDIS_URL=redis://redis:6379/0
+    env_file:
+      - .env
 
   backend:
     build: .
@@ -33,3 +37,5 @@ services:
       - celery
     environment:
       - REDIS_URL=redis://redis:6379/0
+    env_file:
+      - .env
