@@ -78,3 +78,17 @@ class ContactMap(APIDataObject):
         DirectCouplingAnalysis, on_delete=models.CASCADE, null=True
     )
     map = NdarrayField(null=True)
+
+
+class SeedSequence(APIDataObject):
+    name = models.CharField(max_length=200)
+    fasta = models.FileField(
+        upload_to=partial(get_user_spesific_path, subfolder="seeds", suffix=".fasta")
+    )
+
+
+class MappedDi(APIDataObject):
+    protein_name = models.CharField(max_length=200)
+    seed = models.ForeignKey(SeedSequence, on_delete=models.CASCADE)
+    dca = models.ForeignKey(DirectCouplingAnalysis, on_delete=models.CASCADE)
+    mapped_di = NdarrayField()

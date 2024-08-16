@@ -5,44 +5,64 @@ from celery import shared_task
 import time
 from typing import Union, TextIO
 import tempfile
-import pyhmmer
 from dca import dca_class
+import numpy as np
+import os
 
-from .models import APITaskMeta, CeleryTaskMeta, APIDataObject, MultipleSequenceAlignment, DirectCouplingAnalysis
+from .models import APITaskMeta, CeleryTaskMeta, APIDataObject, MultipleSequenceAlignment, DirectCouplingAnalysis, SeedSequence, MappedDi
 from .taskutils import APITaskBase
+from .msautils import hmmsearch_from_seed, filter_by_consecutive_gaps, get_mapped_residues, get_msa_stats
+
+
 
 
 @shared_task(base=APITaskBase, bind=True)
-def generate_msa_task(self, seed, msa_name=None):
-    self.set_progress(message="Getting ready", percent=0)
-    time.sleep(10)
-    self.set_progress(message="Working on it", percent=30)
-    time.sleep(10)
-    self.set_progress(message="Taking a break", percent=60)
-    time.sleep(20)
-    self.set_progress(message="Getting back to it", percent=90)
-    time.sleep(10)
-
+def generate_msa_task(self, seed, msa_name=None, max_gaps=None):
+    if msa_name is None:
+        msa_name = self.get_task_id()
+    
+    seed = seed.replace('\n', '')
+    
     with tempfile.TemporaryFile("a+") as f:
         f.write(
-            f">Dummy MSA\n{seed}\n>Sequence2\n{seed}\n>Sequence3\n{seed[::-1]}"
+            f">{msa_name}\n{seed}"
         )
 
+        seedObj = SeedSequence.objects.create(
+            id=self.get_task_id(),
+            name=msa_name,
+            fasta=File(f, msa_name)
+        )
+
+    self.set_progress(message="Doing HMM search...", percent=10)
+
+    preprocessed_msa = hmmsearch_from_seed(seedObj.fasta.name, msa_name)
+
+    preprocessed_file = tempfile.NamedTemporaryFile(delete=False)
+    try:
+        with open(preprocessed_file.name, 'wb') as fs:
+            preprocessed_msa.write(fs, "afa")
+        
         msa = MultipleSequenceAlignment.objects.create(
             id=self.get_task_id(),
             user=self.get_user(),
             expires=timezone.now() + settings.DATA_EXPIRATION,
         )
-        if msa_name is None:
-            msa_name = self.get_task_id()
-        
-        msa.fasta = File(f, msa_name)
+
+        self.set_progress(message="Filtering!", percent=90)
+
+        filter_by_consecutive_gaps(preprocessed_file.name, msa.fasta.path, max_gaps)
+
         msa.quality = MultipleSequenceAlignment.Qualities.GOOD
-        msa.depth = 3
-        msa.cols = len(seed)
+        rows, cols = get_msa_stats(msa.fasta.path)
+        msa.depth = rows
+        msa.cols = cols
         msa.save()
+
+    finally:
+        os.remove(preprocessed_file.name)
     
-    self.set_progress(message="Finally done!", percent=90)
+    self.set_progress(message="", percent=100)
 
 
 @shared_task(base=APITaskBase, bind=True)
@@ -69,6 +89,22 @@ def compute_dca_task(self, msa_id):
     dca.ranked_di = protein_family.DI
     dca.save()
     self.set_progress(message="", percent=100)
+
+
+@shared_task(base=APITaskBase, bind=True)
+def map_residues_task(self, dca_id, pdb_id, seed_id):
+    dca = DirectCouplingAnalysis.objects.get(id=dca_id)
+    seed = SeedSequence.objects.get(id=seed_id)
+
+    mapped_di = get_mapped_residues(dca.ranked_di, pdb_id, seed.fasta.path, seed.name, pdb_id)
+
+    MappedDi.objects.create(
+        id=self.get_task_id(),
+        protein_name=pdb_id,
+        seed=seed,
+        dca=dca,
+        mapped_di=mapped_di
+    )
 
 
 @shared_task

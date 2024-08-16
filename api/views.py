@@ -14,9 +14,11 @@ from .serializers import (
     MSASerializer,
     ComputeDCASerializer,
     DCASerializer,
+    MapResiduesSerializer,
+    MappedDiSerializer
 )
-from .models import APITaskMeta, MultipleSequenceAlignment, DirectCouplingAnalysis
-from .tasks import generate_msa_task, compute_dca_task
+from .models import APITaskMeta, MappedDi, MultipleSequenceAlignment, DirectCouplingAnalysis
+from .tasks import generate_msa_task, compute_dca_task, map_residues_task
 from .viewutils import (
     UsersReadOnlyModelViewSet,
     UsersUnexpiredReadOnlyModelViewSet,
@@ -51,6 +53,11 @@ class MSAViewSet(UsersCreateModelMixin, UsersUnexpiredReadOnlyModelViewSet):
 class DCAViewSet(UsersUnexpiredReadOnlyModelViewSet):
     serializer_class = DCASerializer
     queryset = DirectCouplingAnalysis.objects.all()
+
+
+class MappedDiViewSet(UsersUnexpiredReadOnlyModelViewSet):
+    serializer_class = MappedDiSerializer
+    queryset = MappedDi.objects.all()
 
 
 class GenerateMsa(APIView):
@@ -92,6 +99,30 @@ class ComputeDca(APIView):
                 params.validated_data.get("msa_id"),
                 user=get_request_user(request),
             )
+
+            resp = TaskSerializer(task)
+            return Response(resp.data, status=status.HTTP_202_ACCEPTED)
+        return Response(params.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class MapResidues(APIView):
+    serializer_class = MapResiduesSerializer
+    throttle_scope = "long_task"
+
+    @extend_schema(
+        request=MapResiduesSerializer,
+        responses={202: TaskSerializer},
+    )
+    def post(self, request, format=None):
+        params = MapResiduesSerializer(data=request.data)
+
+        if params.is_valid():
+            task = map_residues_task.start(
+                params.validated_data.get("dca_id"),
+                params.validated_data.get("pdb_id"),
+                params.validated_data.get("seed_id")
+            )
+            print("cre")
 
             resp = TaskSerializer(task)
             return Response(resp.data, status=status.HTTP_202_ACCEPTED)
