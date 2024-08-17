@@ -60,7 +60,7 @@ def produce_alignment_to_protein(protein_sequence: str, seed_sequence_filepath: 
     # Queries refers to the protein sequence, which yields the target of the alignment.
     # Profiles refers to the domain's profile HMM generated from the domain / full protein's seed sequence. The same HMM used to generate an MSA.
     best_alignment = hits[0][0].best_domain.alignment
-    return ResidueAlignment(best_alignment.hmm_name.decode(), best_alignment.target_name.decode(), best_alignment.target_from, best_alignment.hmm_from, best_alignment.hmm_sequence, best_alignment.target_sequence)
+    return ResidueAlignment(best_alignment.hmm_name.decode(), best_alignment.target_name.decode(), best_alignment.hmm_from, best_alignment.target_from, best_alignment.hmm_sequence, best_alignment.target_sequence)
 
 def get_mapped_residues(DI_arr: npt.NDArray, rcsb_pdb_id: str, seed_sequence_filepath, seed_name, protein_name):
     structure = StructureInformation.fetch_pdb(rcsb_pdb_id)
