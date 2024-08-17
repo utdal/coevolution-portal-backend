@@ -7,14 +7,13 @@ from typing import Union, TextIO
 import tempfile
 from dca import dca_class
 import numpy as np
+import json
 import os
 
-from .models import APITaskMeta, CeleryTaskMeta, APIDataObject, MultipleSequenceAlignment, DirectCouplingAnalysis, SeedSequence, MappedDi
+from .models import APITaskMeta, CeleryTaskMeta, APIDataObject, MultipleSequenceAlignment, DirectCouplingAnalysis, SeedSequence, MappedDi, StructureContacts
 from .taskutils import APITaskBase
 from .msautils import hmmsearch_from_seed, filter_by_consecutive_gaps, get_mapped_residues, get_msa_stats
-
-
-
+from dcatoolkit import StructureInformation
 
 @shared_task(base=APITaskBase, bind=True)
 def generate_msa_task(self, seed, msa_name=None, max_gaps=None):
@@ -106,6 +105,20 @@ def map_residues_task(self, dca_id, pdb_id, seed_id):
         mapped_di=mapped_di
     )
 
+@shared_task(base=APITaskBase, bind=True)
+def generate_contacts_task(self, pdb_id: str, ca_only: bool=False, threshold: float=8):
+    structure_info = StructureInformation.fetch_pdb(pdb_id)
+    contacts_dict = {}
+    for chain_id_1 in structure_info.unique_chains:
+        for chain_id_2 in structure_info.unique_chains:
+            contacts_name = str(chain_id_1) + str(chain_id_2) + "_contacts"
+            contacts_dict[contacts_name] = structure_info.get_contacts(ca_only, threshold, chain_id_1, chain_id_2)
+    StructureContacts.objects.create(
+        id = self.get_task_id(),
+        pdb_id = pdb_id,
+        threshold = threshold,
+        contacts = json.dumps(contacts_dict)
+    )
 
 @shared_task
 def cleanup_expired_data():

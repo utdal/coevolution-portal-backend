@@ -92,3 +92,10 @@ class MappedDi(APIDataObject):
     seed = models.ForeignKey(SeedSequence, on_delete=models.CASCADE)
     dca = models.ForeignKey(DirectCouplingAnalysis, on_delete=models.CASCADE)
     mapped_di = NdarrayField()
+
+
+class StructureContacts(APIDataObject):
+    pdb_id = models.CharField(max_length=8)
+    ca_only = models.BooleanField()
+    threshold = models.IntegerField()
+    contacts = models.JSONField()

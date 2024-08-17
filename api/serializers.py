@@ -66,3 +66,8 @@ class MapResiduesSerializer(serializers.Serializer):
     dca_id = serializers.UUIDField()
     pdb_id = serializers.CharField(max_length=8)
     seed_id = serializers.UUIDField()
+
+class StructureContactsSerializer(serializers.Serializer):
+    pdb_id = serializers.CharField(max_length=8)
+    ca_only = serializers.BooleanField()
+    threshold = serializers.FloatField()
