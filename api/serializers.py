@@ -1,7 +1,13 @@
 from rest_framework import serializers
 
 from .modelutils import NdarraySerializerField
-from .models import APITaskMeta, MappedDi, MultipleSequenceAlignment, DirectCouplingAnalysis
+from .models import (
+    APITaskMeta,
+    MappedDi,
+    MultipleSequenceAlignment,
+    DirectCouplingAnalysis,
+    StructureContacts,
+)
 
 
 class TaskSerializer(serializers.ModelSerializer):
@@ -50,7 +56,31 @@ class MappedDiSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = MappedDi
-        fields = ["id", "user", "created", "expires", "protein_name", "seed", "dca", "mapped_di"]
+        fields = [
+            "id",
+            "user",
+            "created",
+            "expires",
+            "protein_name",
+            "seed",
+            "dca",
+            "mapped_di",
+        ]
+
+
+class StructureContactsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = StructureContacts
+        fields = [
+            "id",
+            "user",
+            "created",
+            "expires",
+            "pdb_id",
+            "ca_only",
+            "threshold",
+            "contacts",
+        ]
 
 
 class GenerateMSASerializer(serializers.Serializer):
@@ -67,7 +97,8 @@ class MapResiduesSerializer(serializers.Serializer):
     pdb_id = serializers.CharField(max_length=8)
     seed_id = serializers.UUIDField()
 
-class StructureContactsSerializer(serializers.Serializer):
+
+class GenerateContactsSerializer(serializers.Serializer):
     pdb_id = serializers.CharField(max_length=8)
     ca_only = serializers.BooleanField()
     threshold = serializers.FloatField()

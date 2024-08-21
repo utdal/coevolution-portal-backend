@@ -9,16 +9,29 @@ from drf_spectacular.utils import extend_schema
 import uuid
 
 from .serializers import (
+    GenerateContactsSerializer,
+    StructureContactsSerializer,
     TaskSerializer,
     GenerateMSASerializer,
     MSASerializer,
     ComputeDCASerializer,
     DCASerializer,
     MapResiduesSerializer,
-    MappedDiSerializer
+    MappedDiSerializer,
 )
-from .models import APITaskMeta, MappedDi, MultipleSequenceAlignment, DirectCouplingAnalysis
-from .tasks import generate_msa_task, compute_dca_task, map_residues_task
+from .models import (
+    APITaskMeta,
+    MappedDi,
+    MultipleSequenceAlignment,
+    DirectCouplingAnalysis,
+    StructureContacts,
+)
+from .tasks import (
+    generate_contacts_task,
+    generate_msa_task,
+    compute_dca_task,
+    map_residues_task,
+)
 from .viewutils import (
     UsersReadOnlyModelViewSet,
     UsersUnexpiredReadOnlyModelViewSet,
@@ -58,6 +71,11 @@ class DCAViewSet(UsersUnexpiredReadOnlyModelViewSet):
 class MappedDiViewSet(UsersUnexpiredReadOnlyModelViewSet):
     serializer_class = MappedDiSerializer
     queryset = MappedDi.objects.all()
+
+
+class StructureContactsViewSet(UsersUnexpiredReadOnlyModelViewSet):
+    serializer_class = StructureContactsSerializer
+    queryset = StructureContacts.objects.all()
 
 
 class GenerateMsa(APIView):
@@ -120,9 +138,31 @@ class MapResidues(APIView):
             task = map_residues_task.start(
                 params.validated_data.get("dca_id"),
                 params.validated_data.get("pdb_id"),
-                params.validated_data.get("seed_id")
+                params.validated_data.get("seed_id"),
             )
-            print("cre")
+
+            resp = TaskSerializer(task)
+            return Response(resp.data, status=status.HTTP_202_ACCEPTED)
+        return Response(params.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class GenerateContacts(APIView):
+    serializer_class = GenerateContactsSerializer
+    throttle_scope = "long_task"
+
+    @extend_schema(
+        request=GenerateContactsSerializer,
+        responses={202: TaskSerializer},
+    )
+    def post(self, request, format=None):
+        params = GenerateContactsSerializer(data=request.data)
+
+        if params.is_valid():
+            task = generate_contacts_task.start(
+                params.validated_data.get("pdb_id"),
+                params.validated_data.get("ca_only"),
+                params.validated_data.get("threshold"),
+            )
 
             resp = TaskSerializer(task)
             return Response(resp.data, status=status.HTTP_202_ACCEPTED)
