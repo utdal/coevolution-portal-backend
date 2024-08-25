@@ -131,14 +131,14 @@ def generate_contacts_task(
             contacts = structure_info.get_contacts(
                 ca_only, threshold, chain_id_1, chain_id_2
             )
-            contacts = [(int(a), int(b)) for a, b in contacts]
+            contacts = [(int(a), int(b)) for a, b in contacts] # sets and np ints not JSON serializable
             contacts_dict[contacts_name] = contacts
     StructureContacts.objects.create(
         id=self.get_task_id(),
         pdb_id=pdb_id,
         ca_only=ca_only,
         threshold=threshold,
-        contacts=json.dumps(contacts_dict),
+        contacts=contacts_dict,
     )
 
 
