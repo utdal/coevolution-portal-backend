@@ -1,7 +1,5 @@
 #from celery import shared_task
-from typing import Union, TextIO, Literal
-import biotite.structure
-import numpy as np
+from typing import Optional
 import numpy.typing as npt
 
 from dcatoolkit import DirectInformationData, ResidueAlignment, StructureInformation
@@ -31,11 +29,9 @@ def generate_hmm_and_profiles(seed_sequence_filepath: str, seed_name: str) -> tu
         hmm, profile, optimized_profile = builder.build_msa(loaded_seed_digital, background)
     return background, hmm, profile, optimized_profile
 
-def hmmsearch_from_seed(seed_sequence_filepath: str, seed_name: str):
+def hmmsearch_from_seed(seed_sequence_filepath: str, seed_name: str, database_path = "/mfs/io/groups/morcos/uniprot_db/uniprot_sprot_trembl.fasta"):
     aa_alphabet = pyhmmer.easel.Alphabet.amino()
     background, hmm, _, _ = generate_hmm_and_profiles(seed_sequence_filepath, seed_name)
-    # Define a database path for hmmsearch to search through.
-    database_path = "/mfs/io/groups/morcos/uniprot_db/uniprot_sprot_trembl.fasta"
     pipeline = pyhmmer.plan7.Pipeline(alphabet=aa_alphabet, background=background)
     hits = None
     with pyhmmer.easel.SequenceFile(database_path, digital=True, alphabet=aa_alphabet) as seq_file:
@@ -47,7 +43,7 @@ def hmmsearch_from_seed(seed_sequence_filepath: str, seed_name: str):
         else:
             raise TypeError("The produced MSA is not an MSA in text format.")
 
-def filter_by_consecutive_gaps(input_filepath: str, output_filepath: str, max_gaps: int):
+def filter_by_consecutive_gaps(input_filepath: str, output_filepath: str, max_gaps: Optional[int]):
     input_MSA = MSATools.load_from_file(input_filepath)
     output_MSA = MSATools(input_MSA.filter_by_continuous_gaps(max_gaps))
     output_MSA.write(output_filepath)
