@@ -102,12 +102,12 @@ def compute_dca_task(self, msa_id):
 
 
 @shared_task(base=APITaskBase, bind=True)
-def map_residues_task(self, dca_id, pdb_id, seed_id):
+def map_residues_task(self, dca_id, pdb_id, seed_id, chain1, chain2):
     dca = DirectCouplingAnalysis.objects.get(id=dca_id)
     seed = SeedSequence.objects.get(id=seed_id)
     StructureInformation.fetch_pdb(pdb_id)
     mapped_di = get_mapped_residues(
-        dca.ranked_di, pdb_id, seed.fasta.path, seed.name, pdb_id
+        dca.ranked_di, pdb_id, seed.fasta.path, seed.name, pdb_id, chain1, chain2
     )
 
     MappedDi.objects.create(
