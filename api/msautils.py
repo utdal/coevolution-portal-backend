@@ -1,4 +1,3 @@
-#from celery import shared_task
 from typing import Optional
 import numpy.typing as npt
 
@@ -29,7 +28,7 @@ def generate_hmm_and_profiles(seed_sequence_filepath: str, seed_name: str) -> tu
         hmm, profile, optimized_profile = builder.build_msa(loaded_seed_digital, background)
     return background, hmm, profile, optimized_profile
 
-def hmmsearch_from_seed(seed_sequence_filepath: str, seed_name: str, database_path = "/mfs/io/groups/morcos/uniprot_db/uniprot_sprot_trembl.fasta"):
+def hmmsearch_from_seed(seed_sequence_filepath: str, seed_name: str, database_path: str="/mfs/io/groups/morcos/uniprot_db/uniprot_sprot_trembl.fasta"):
     aa_alphabet = pyhmmer.easel.Alphabet.amino()
     background, hmm, _, _ = generate_hmm_and_profiles(seed_sequence_filepath, seed_name)
     pipeline = pyhmmer.plan7.Pipeline(alphabet=aa_alphabet, background=background)
@@ -58,10 +57,10 @@ def produce_alignment_to_protein(protein_sequence: str, seed_sequence_filepath: 
     best_alignment = hits[0][0].best_domain.alignment
     return ResidueAlignment(best_alignment.hmm_name.decode(), best_alignment.target_name.decode(), best_alignment.hmm_from, best_alignment.target_from, best_alignment.hmm_sequence, best_alignment.target_sequence)
 
-def get_mapped_residues(DI_arr: npt.NDArray, rcsb_pdb_id: str, seed_sequence_filepath, seed_name, protein_name):
+def get_mapped_residues(DI_arr: npt.NDArray, rcsb_pdb_id: str, seed_sequence_filepath, seed_name, protein_name, chain1, chain2):
     structure = StructureInformation.fetch_pdb(rcsb_pdb_id)
-    res_align = produce_alignment_to_protein(structure.full_sequence, seed_sequence_filepath=seed_sequence_filepath, seed_name=seed_name, protein_name=protein_name)
-    res_align = produce_alignment_to_protein(structure.non_missing_sequence, seed_sequence_filepath=seed_sequence_filepath, seed_name=seed_name, protein_name=protein_name)
+    res_align = produce_alignment_to_protein(structure.get_non_missing_sequence(chain1), seed_sequence_filepath=seed_sequence_filepath, seed_name=seed_name, protein_name=protein_name)
+    res_align = produce_alignment_to_protein(structure.get_non_missing_sequence(chain2), seed_sequence_filepath=seed_sequence_filepath, seed_name=seed_name, protein_name=protein_name)
     DI_data = DirectInformationData.load_as_ndarray(DI_arr)
     mapped_residues = DI_data.get_ranked_mapped_pairs(res_align, res_align, pairs_only=False)
     return mapped_residues
