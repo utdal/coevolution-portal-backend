@@ -50,16 +50,22 @@ def generate_msa_task(self, seed, msa_name=None, max_gaps=None):
 
     preprocessed_file = tempfile.NamedTemporaryFile(delete=False)
     try:
-        with open(preprocessed_file.name, "wb") as fs:
-            preprocessed_msa.write(fs, "afa")
-
         msa = MultipleSequenceAlignment.objects.create(
             id=self.get_task_id(),
             user=self.get_user(),
             expires=timezone.now() + settings.DATA_EXPIRATION,
         )
 
+        """
+        # Untested approach
+        b = io.BytesIO()
+        preprocessed_msa.write(b, "afa")
+        filter_by_consecutive_gaps(preprocessed_msa, msa.fasta.path, max_gaps)
+        """
         self.set_progress(message="Filtering!", percent=90)
+
+        with open(preprocessed_file.name, "wb") as fs:
+            preprocessed_msa.write(fs, "afa")
 
         filter_by_consecutive_gaps(preprocessed_file.name, msa.fasta.path, max_gaps)
 
