@@ -1,10 +1,10 @@
-from typing import Optional
+from typing import Optional, Union
 import numpy.typing as npt
 
 from dcatoolkit import DirectInformationData, ResidueAlignment, StructureInformation
 from dcatoolkit import MSATools
 import pyhmmer
-
+import io
 
 #alphabet used in production of MSAs and HMMs.
 def generate_hmm_and_profiles(seed_sequence_filepath: str, seed_name: str) -> tuple:
@@ -42,10 +42,10 @@ def hmmsearch_from_seed(seed_sequence_filepath: str, seed_name: str, database_pa
         else:
             raise TypeError("The produced MSA is not an MSA in text format.")
 
-def filter_by_consecutive_gaps(input_filepath: str, output_filepath: str, max_gaps: Optional[int]):
-    input_MSA = MSATools.load_from_file(input_filepath)
+def filter_by_consecutive_gaps(input_source: Union[str, io.IOBase], output_source: Union[str, io.IOBase], max_gaps: Optional[int]):
+    input_MSA = MSATools.load_from_file(input_source)
     output_MSA = MSATools(input_MSA.filter_by_continuous_gaps(max_gaps))
-    output_MSA.write(output_filepath)
+    output_MSA.write(output_source)
 
 def produce_alignment_to_protein(protein_sequence: str, seed_sequence_filepath: str, seed_name: str, protein_name: str):
     aa_alphabet = pyhmmer.easel.Alphabet.amino()
