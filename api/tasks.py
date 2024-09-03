@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.utils import timezone
 from django.core.files import File
+from django.core.files.base import ContentFile
 from celery import shared_task
 import time
 from typing import Union, TextIO
@@ -9,6 +10,7 @@ from dca import dca_class
 import numpy as np
 import json
 import os
+import io
 
 from .models import (
     APITaskMeta,
@@ -32,51 +34,39 @@ from dcatoolkit import StructureInformation
 
 @shared_task(base=APITaskBase, bind=True)
 def generate_msa_task(self, seed, msa_name=None, max_gaps=None):
+    self.set_progress(message="Starting...", percent=0)
     if msa_name is None:
         msa_name = self.get_task_id()
 
     seed = seed.replace("\n", "")
 
-    with tempfile.TemporaryFile("a+") as f:
-        f.write(f">{msa_name}\n{seed}")
-
-        seedObj = SeedSequence.objects.create(
-            id=self.get_task_id(), name=msa_name, fasta=File(f, msa_name)
-        )
+    f = ContentFile(f">{msa_name}\n{seed}", name=msa_name)
+    seedObj = SeedSequence.objects.create(
+        name=msa_name, fasta=f
+    )
 
     self.set_progress(message="Doing HMM search...", percent=10)
 
-    preprocessed_msa = hmmsearch_from_seed(seedObj.fasta.name, msa_name)
+    preprocessed_msa = hmmsearch_from_seed(seedObj.fasta.path, msa_name, settings.HMM_DATABASE)
 
-    preprocessed_file = tempfile.NamedTemporaryFile(delete=False)
-    try:
-        msa = MultipleSequenceAlignment.objects.create(
-            id=self.get_task_id(),
-            user=self.get_user(),
-            expires=timezone.now() + settings.DATA_EXPIRATION,
-        )
+    self.set_progress(message="Filtering!", percent=90)
 
-        """
-        # Untested approach
-        b = io.BytesIO()
-        preprocessed_msa.write(b, "afa")
-        filter_by_consecutive_gaps(preprocessed_msa, msa.fasta.path, max_gaps)
-        """
-        self.set_progress(message="Filtering!", percent=90)
+    msa = MultipleSequenceAlignment.objects.create(
+        id=self.get_task_id(),
+        user=self.get_user(),
+        expires=timezone.now() + settings.DATA_EXPIRATION,
+        fasta=ContentFile("", msa_name)
+    )
 
-        with open(preprocessed_file.name, "wb") as fs:
-            preprocessed_msa.write(fs, "afa")
+    preprocessed_file = io.BytesIO()
+    preprocessed_msa.write(preprocessed_file, "afa")
+    filter_by_consecutive_gaps(preprocessed_file, msa.fasta.path, max_gaps)
 
-        filter_by_consecutive_gaps(preprocessed_file.name, msa.fasta.path, max_gaps)
-
-        msa.quality = MultipleSequenceAlignment.Qualities.GOOD
-        rows, cols = get_msa_stats(msa.fasta.path)
-        msa.depth = rows
-        msa.cols = cols
-        msa.save()
-
-    finally:
-        os.remove(preprocessed_file.name)
+    msa.quality = MultipleSequenceAlignment.Qualities.GOOD
+    rows, cols = get_msa_stats(msa.fasta.path)
+    msa.depth = rows
+    msa.cols = cols
+    msa.save()
 
     self.set_progress(message="", percent=100)
 

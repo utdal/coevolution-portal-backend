@@ -25,6 +25,18 @@ class APITaskBase(celery.Task):
 
         return task
 
+    def __call__(self, *args, user=None, save_task=False, **kwargs):
+        self._user_id = None if user is None else user.id
+        self._task_id = str(uuid.uuid4())
+
+        task = APITaskMeta.objects.create(
+            id=self._task_id, user=user, name=self.name, state="PENDING"
+        )
+
+        self.run(*args, **kwargs)
+
+        return task
+
     def get_task_id(self):
         try:
             return self._task_id
@@ -80,3 +92,10 @@ class APITaskBase(celery.Task):
         if percent is not None:
             task_meta.percent = percent
         task_meta.save()
+
+        print(f"Task {self.name}: ", end='')
+        if message is not None:
+            print(message, end=' ')
+        if percent is not None:
+            print(percent, end="%")
+        print()
