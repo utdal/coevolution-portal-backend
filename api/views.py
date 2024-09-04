@@ -138,7 +138,6 @@ class MapResidues(APIView):
             task = map_residues_task.start(
                 params.validated_data.get("dca_id"),
                 params.validated_data.get("pdb_id"),
-                params.validated_data.get("seed_id"),
                 params.validated_data.get("chain1"),
                 params.validated_data.get("chain2"),
             )

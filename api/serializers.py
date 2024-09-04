@@ -96,7 +96,6 @@ class ComputeDCASerializer(serializers.Serializer):
 class MapResiduesSerializer(serializers.Serializer):
     dca_id = serializers.UUIDField()
     pdb_id = serializers.CharField(max_length=8)
-    seed_id = serializers.UUIDField()
     chain1 = serializers.CharField(max_length=10)
     chain2 = serializers.CharField(max_length=10)
 

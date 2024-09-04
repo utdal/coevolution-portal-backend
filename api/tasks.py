@@ -89,6 +89,7 @@ def compute_dca_task(self, msa_id, wait=True):
         id=self.get_task_id(),
         user=self.get_user(),
         expires=timezone.now() + settings.DATA_EXPIRATION,
+        msa=msa
     )
     dca.e_ij = protein_family.couplings
     dca.h_i = protein_family.localfields
@@ -99,14 +100,17 @@ def compute_dca_task(self, msa_id, wait=True):
 
 
 @shared_task(base=APITaskBase, bind=True)
-def map_residues_task(self, dca_id, pdb_id, seed_id, chain1, chain2, wait=True):
+def map_residues_task(self, dca_id, pdb_id, chain1, chain2, wait=True):
     prev_task = CeleryTaskMeta.objects.filter(id=dca_id)
     if prev_task.exists() and wait:
         self.set_progress(message="Waiting for MSA", percent=0)
         prev_task.first().wait_for_completion()
 
     dca = DirectCouplingAnalysis.objects.get(id=dca_id)
-    seed = SeedSequence.objects.get(id=seed_id)
+    assert dca.msa and dca.msa.seed, "The DCA must have a seed"
+    seed = dca.msa.seed
+    
+    self.set_progress(message="Mapping residues", percent=10)
     # StructureInformation.fetch_pdb(pdb_id) # Called in get_mapped_residues
     mapped_di = get_mapped_residues(
         dca.ranked_di, pdb_id, seed.fasta.path, seed.name, pdb_id, chain1, chain2
@@ -119,12 +123,14 @@ def map_residues_task(self, dca_id, pdb_id, seed_id, chain1, chain2, wait=True):
         dca=dca,
         mapped_di=mapped_di,
     )
+    self.set_progress(message="", percent=100)
 
 
 @shared_task(base=APITaskBase, bind=True)
 def generate_contacts_task(
     self, pdb_id: str, ca_only: bool = False, threshold: float = 8
 ):
+    self.set_progress(message="Generating contacts", percent=0)
     structure_info = StructureInformation.fetch_pdb(pdb_id)
     contacts_dict = {}
     for chain_id_1 in structure_info.unique_chains:
@@ -142,6 +148,7 @@ def generate_contacts_task(
         threshold=threshold,
         contacts=contacts_dict,
     )
+    self.set_progress(message="", percent=100)
 
 
 @shared_task
