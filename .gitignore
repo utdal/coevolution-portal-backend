@@ -1,6 +1,7 @@
 temp/*
 media/*
 static/*
+databases/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

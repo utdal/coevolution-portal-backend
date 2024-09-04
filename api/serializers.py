@@ -1,7 +1,13 @@
 from rest_framework import serializers
 
 from .modelutils import NdarraySerializerField
-from .models import APITaskMeta, MultipleSequenceAlignment, DirectCouplingAnalysis
+from .models import (
+    APITaskMeta,
+    MappedDi,
+    MultipleSequenceAlignment,
+    DirectCouplingAnalysis,
+    StructureContacts,
+)
 
 
 class TaskSerializer(serializers.ModelSerializer):
@@ -29,6 +35,7 @@ class MSASerializer(serializers.ModelSerializer):
             "user",
             "created",
             "expires",
+            "seed",
             "fasta",
             "depth",
             "cols",
@@ -45,6 +52,38 @@ class DCASerializer(serializers.ModelSerializer):
         fields = ["id", "user", "created", "expires", "m_eff", "ranked_di"]
 
 
+class MappedDiSerializer(serializers.ModelSerializer):
+    mapped_di = NdarraySerializerField(required=False)
+
+    class Meta:
+        model = MappedDi
+        fields = [
+            "id",
+            "user",
+            "created",
+            "expires",
+            "protein_name",
+            "seed",
+            "dca",
+            "mapped_di",
+        ]
+
+
+class StructureContactsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = StructureContacts
+        fields = [
+            "id",
+            "user",
+            "created",
+            "expires",
+            "pdb_id",
+            "ca_only",
+            "threshold",
+            "contacts",
+        ]
+
+
 class GenerateMSASerializer(serializers.Serializer):
     seed = serializers.CharField(max_length=700)
     msa_name = serializers.CharField(max_length=255, required=False)
@@ -52,3 +91,16 @@ class GenerateMSASerializer(serializers.Serializer):
 
 class ComputeDCASerializer(serializers.Serializer):
     msa_id = serializers.UUIDField()
+
+
+class MapResiduesSerializer(serializers.Serializer):
+    dca_id = serializers.UUIDField()
+    pdb_id = serializers.CharField(max_length=8)
+    chain1 = serializers.CharField(max_length=10)
+    chain2 = serializers.CharField(max_length=10)
+
+
+class GenerateContactsSerializer(serializers.Serializer):
+    pdb_id = serializers.CharField(max_length=8)
+    ca_only = serializers.BooleanField()
+    threshold = serializers.FloatField()

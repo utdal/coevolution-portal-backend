@@ -46,6 +46,13 @@ class APIDataObject(models.Model):
     )
 
 
+class SeedSequence(APIDataObject):
+    name = models.CharField(max_length=200)
+    fasta = models.FileField(
+        upload_to=partial(get_user_spesific_path, subfolder="seeds", suffix=".fasta")
+    )
+
+
 class MultipleSequenceAlignment(APIDataObject):
     class Qualities(models.IntegerChoices):
         NA = 0
@@ -55,6 +62,7 @@ class MultipleSequenceAlignment(APIDataObject):
         GOOD = 4
         GREAT = 5
 
+    seed = models.ForeignKey(SeedSequence, on_delete=models.SET_NULL, null=True)
     fasta = models.FileField(
         upload_to=partial(get_user_spesific_path, subfolder="msa", suffix=".fasta"),
         null=True,
@@ -66,15 +74,22 @@ class MultipleSequenceAlignment(APIDataObject):
 
 
 class DirectCouplingAnalysis(APIDataObject):
+    msa = models.ForeignKey(MultipleSequenceAlignment, on_delete=models.SET_NULL, null=True)
     e_ij = NdarrayField(null=True)
     h_i = NdarrayField(null=True)
     ranked_di = NdarrayField(null=True)
     m_eff = models.IntegerField(null=True)
 
 
-class ContactMap(APIDataObject):
-    pdb = models.CharField(max_length=50, blank=True)
-    coupling_results = models.ForeignKey(
-        DirectCouplingAnalysis, on_delete=models.CASCADE, null=True
-    )
-    map = NdarrayField(null=True)
+class MappedDi(APIDataObject):
+    protein_name = models.CharField(max_length=200)
+    seed = models.ForeignKey(SeedSequence, on_delete=models.CASCADE)
+    dca = models.ForeignKey(DirectCouplingAnalysis, on_delete=models.CASCADE)
+    mapped_di = NdarrayField()
+
+
+class StructureContacts(APIDataObject):
+    pdb_id = models.CharField(max_length=8)
+    ca_only = models.BooleanField()
+    threshold = models.IntegerField()
+    contacts = models.JSONField()

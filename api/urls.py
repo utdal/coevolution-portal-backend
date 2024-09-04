@@ -10,8 +10,12 @@ from .views import (
     TaskViewSet,
     MSAViewSet,
     DCAViewSet,
+    MappedDiViewSet,
+    StructureContactsViewSet,
     GenerateMsa,
     ComputeDca,
+    MapResidues,
+    GenerateContacts,
 )
 
 urlpatterns = [
@@ -28,11 +32,15 @@ urlpatterns = [
     # API endpoints
     path("generate-msa/", GenerateMsa.as_view()),
     path("compute-dca/", ComputeDca.as_view()),
+    path("map-residues/", MapResidues.as_view()),
+    path("generate-contacts/", GenerateContacts.as_view()),
 ]
 
 router = DefaultRouter()
 router.register("tasks", TaskViewSet, basename='task')
 router.register("msas", MSAViewSet, basename='msa')
 router.register("dcas", DCAViewSet, basename='dca')
+router.register("mapped-dis", MappedDiViewSet, basename='mapped-di')
+router.register("structure-contacts", StructureContactsViewSet, basename='structure-contact')
 
 urlpatterns += router.urls

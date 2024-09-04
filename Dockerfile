@@ -4,10 +4,10 @@ RUN groupadd -r celeryuser && useradd -r -g celeryuser celeryuser
 
 WORKDIR /usr/src/app
 
-RUN apt-get update && apt-get install -y git gcc
+RUN apt-get update && apt-get install -y git gcc g++
 
 COPY requirements.txt requirements.txt
-RUN pip install -r requirements.txt
+RUN pip install -r requirements.txt -U
 
 COPY . .
 

@@ -1,57 +1,84 @@
 from django.conf import settings
 from django.utils import timezone
 from django.core.files import File
+from django.core.files.base import ContentFile
 from celery import shared_task
 import time
 from typing import Union, TextIO
 import tempfile
-import pyhmmer
 from dca import dca_class
+import numpy as np
+import json
+import os
+import io
 
-from .models import APITaskMeta, CeleryTaskMeta, APIDataObject, MultipleSequenceAlignment, DirectCouplingAnalysis
+from .models import (
+    APITaskMeta,
+    CeleryTaskMeta,
+    APIDataObject,
+    MultipleSequenceAlignment,
+    DirectCouplingAnalysis,
+    SeedSequence,
+    MappedDi,
+    StructureContacts,
+)
 from .taskutils import APITaskBase
+from .msautils import (
+    hmmsearch_from_seed,
+    filter_by_consecutive_gaps,
+    get_mapped_residues,
+    get_msa_stats,
+)
+from dcatoolkit import StructureInformation
 
 
 @shared_task(base=APITaskBase, bind=True)
-def generate_msa_task(self, seed, msa_name=None):
-    self.set_progress(message="Getting ready", percent=0)
-    time.sleep(10)
-    self.set_progress(message="Working on it", percent=30)
-    time.sleep(10)
-    self.set_progress(message="Taking a break", percent=60)
-    time.sleep(20)
-    self.set_progress(message="Getting back to it", percent=90)
-    time.sleep(10)
+def generate_msa_task(self, seed, msa_name=None, max_gaps=None):
+    self.set_progress(message="Starting...", percent=0)
+    if msa_name is None:
+        msa_name = self.get_task_id()
 
-    with tempfile.TemporaryFile("a+") as f:
-        f.write(
-            f">Dummy MSA\n{seed}\n>Sequence2\n{seed}\n>Sequence3\n{seed[::-1]}"
-        )
+    seed = seed.replace("\n", "")
 
-        msa = MultipleSequenceAlignment.objects.create(
-            id=self.get_task_id(),
-            user=self.get_user(),
-            expires=timezone.now() + settings.DATA_EXPIRATION,
-        )
-        if msa_name is None:
-            msa_name = self.get_task_id()
-        
-        msa.fasta = File(f, msa_name)
-        msa.quality = MultipleSequenceAlignment.Qualities.GOOD
-        msa.depth = 3
-        msa.cols = len(seed)
-        msa.save()
-    
-    self.set_progress(message="Finally done!", percent=90)
+    f = ContentFile(f">{msa_name}\n{seed}", name=msa_name)
+    seedObj = SeedSequence.objects.create(
+        name=msa_name, fasta=f
+    )
+
+    self.set_progress(message="Doing HMM search...", percent=10)
+
+    preprocessed_msa = hmmsearch_from_seed(seedObj.fasta.path, msa_name, settings.HMM_DATABASE)
+
+    self.set_progress(message="Filtering!", percent=90)
+
+    msa = MultipleSequenceAlignment.objects.create(
+        id=self.get_task_id(),
+        user=self.get_user(),
+        expires=timezone.now() + settings.DATA_EXPIRATION,
+        seed=seedObj,
+        fasta=ContentFile("", msa_name)
+    )
+
+    preprocessed_file = io.BytesIO()
+    preprocessed_msa.write(preprocessed_file, "afa")
+    filter_by_consecutive_gaps(preprocessed_file, msa.fasta.path, max_gaps)
+
+    msa.quality = MultipleSequenceAlignment.Qualities.GOOD
+    rows, cols = get_msa_stats(msa.fasta.path)
+    msa.depth = rows
+    msa.cols = cols
+    msa.save()
+
+    self.set_progress(message="", percent=100)
 
 
 @shared_task(base=APITaskBase, bind=True)
-def compute_dca_task(self, msa_id):
+def compute_dca_task(self, msa_id, wait=True):
     prev_task = CeleryTaskMeta.objects.filter(id=msa_id)
-    if prev_task.exists():
+    if prev_task.exists() and wait:
         self.set_progress(message="Waiting for MSA", percent=0)
         prev_task.first().wait_for_completion()
-    
+
     msa = MultipleSequenceAlignment.objects.get(id=msa_id)
 
     self.set_progress(message="Running DCA", percent=10)
@@ -62,6 +89,7 @@ def compute_dca_task(self, msa_id):
         id=self.get_task_id(),
         user=self.get_user(),
         expires=timezone.now() + settings.DATA_EXPIRATION,
+        msa=msa
     )
     dca.e_ij = protein_family.couplings
     dca.h_i = protein_family.localfields
@@ -71,66 +99,63 @@ def compute_dca_task(self, msa_id):
     self.set_progress(message="", percent=100)
 
 
-@shared_task
-def hmmsearch_from_seed(
-    seed_sequence: Union[str, TextIO], protein_name: str, max_gaps: int = 10000
+@shared_task(base=APITaskBase, bind=True)
+def map_residues_task(self, dca_id, pdb_id, chain1, chain2, wait=True):
+    prev_task = CeleryTaskMeta.objects.filter(id=dca_id)
+    if prev_task.exists() and wait:
+        self.set_progress(message="Waiting for MSA", percent=0)
+        prev_task.first().wait_for_completion()
+
+    dca = DirectCouplingAnalysis.objects.get(id=dca_id)
+    assert dca.msa and dca.msa.seed, "The DCA must have a seed"
+    seed = dca.msa.seed
+    
+    self.set_progress(message="Mapping residues", percent=10)
+    # StructureInformation.fetch_pdb(pdb_id) # Called in get_mapped_residues
+    mapped_di = get_mapped_residues(
+        dca.ranked_di, pdb_id, seed.fasta.path, seed.name, pdb_id, chain1, chain2
+    )
+
+    MappedDi.objects.create(
+        id=self.get_task_id(),
+        protein_name=pdb_id,
+        seed=seed,
+        dca=dca,
+        mapped_di=mapped_di,
+    )
+    self.set_progress(message="", percent=100)
+
+
+@shared_task(base=APITaskBase, bind=True)
+def generate_contacts_task(
+    self, pdb_id: str, ca_only: bool = False, threshold: float = 8
 ):
-    # alphabet used in production of MSAs and HMMs.
-    aa_alphabet = pyhmmer.easel.Alphabet.amino()
-    # If a real HMM profile is found, seed sequence is ignored. Otherwise, it is required.
-
-    # Supply a name for your HMM profile, regardless of whether you're building it or have one in your file system.
-    hmm_prof_fname = f"{protein_name}_HMM"
-    # Supply a name for your seed sequence. This is optional if you wish to search with an already produced profile HMM.
-    # seed_seq_fname = f"{protein_name}.fasta"
-
-    if type(seed_sequence) == str:
-        tmp = tempfile.NamedTemporaryFile()
-        # Open the file for writing.
-        tmp.name = ""
-        with open(tmp.name, "w") as f:
-            f.write(seed_sequence)
-        MSA_fname = tmp.name
-    else:
-        MSA_fname = seed_sequence
-
-    # Define a database path for hmmsearch to search through.
-    database_path = "/mfs/io/groups/morcos/uniprot_db/uniprot_sprot_trembl.fasta"
-
-    # Remove intermediate .sto and .afa files.
-    remove_intermediates = True
-
-    # Check to see if max_gaps is a valid number >= 0.
-    if max_gaps.isnumeric():
-        max_gaps = int(max_gaps)
-
-        # /mfs/io/groups/morcos/g1petastore_transfer/share/hmmer/bin/hmmbuild $hmm_prof_fname $seed_seq_fname > /dev/null 2>&1
-    with pyhmmer.easel.MSAFile(
-        MSA_fname, digital=False, alphabet=aa_alphabet
-    ) as msa_fs:
-        loaded_seed: pyhmmer.easel.TextMSA = msa_fs.read()
-        # Must convert to a digital MSA according to https://pyhmmer.readthedocs.io/en/stable/examples/msa_to_hmm.html
-        loaded_seed = loaded_seed.digitize(alphabet=aa_alphabet)
-        builder = pyhmmer.plan7.Builder(alphabet=aa_alphabet)
-        background = pyhmmer.plan7.Background(alphabet=aa_alphabet)
-        loaded_seed.name = f"{protein_name}_MSA"
-        hmm, _, _ = builder.build_msa(loaded_seed, background)
-
-    # The profile exists. We can now do hmmsearch.
-    pipeline = pyhmmer.plan7.Pipeline(alphabet=aa_alphabet, background=background)
-    with pyhmmer.easel.SequenceFile("", digital=True, alphabet=aa_alphabet) as seq_file:
-        hits = pipeline.search_hmm(hmm, seq_file)
-    ali = hits[0].domains[0].alignment
-    print(ali)
-
-    produced_msa = hits.to_msa(alphabet=aa_alphabet)
+    self.set_progress(message="Generating contacts", percent=0)
+    structure_info = StructureInformation.fetch_pdb(pdb_id)
+    contacts_dict = {}
+    for chain_id_1 in structure_info.unique_chains:
+        for chain_id_2 in structure_info.unique_chains:
+            contacts_name = str(chain_id_1) + str(chain_id_2) + "_contacts"
+            contacts = structure_info.get_contacts(
+                ca_only, threshold, chain_id_1, chain_id_2
+            )
+            contacts = [(int(a), int(b)) for a, b in contacts] # sets and np ints not JSON serializable
+            contacts_dict[contacts_name] = contacts
+    StructureContacts.objects.create(
+        id=self.get_task_id(),
+        pdb_id=pdb_id,
+        ca_only=ca_only,
+        threshold=threshold,
+        contacts=contacts_dict,
+    )
+    self.set_progress(message="", percent=100)
 
 
 @shared_task
 def cleanup_expired_data():
     old_tasks = APITaskMeta.objects.filter(expires__lte=timezone.now())
     old_data = APIDataObject.objects.filter(expires__lte=timezone.now())
-    
+
     if len(old_tasks) or len(old_data):
         print(f"{len(old_tasks)} tasks and {len(old_data)} objects have expired.")
 
