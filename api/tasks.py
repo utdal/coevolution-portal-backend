@@ -55,6 +55,7 @@ def generate_msa_task(self, seed, msa_name=None, max_gaps=None):
         id=self.get_task_id(),
         user=self.get_user(),
         expires=timezone.now() + settings.DATA_EXPIRATION,
+        seed=seedObj,
         fasta=ContentFile("", msa_name)
     )
 
@@ -72,9 +73,9 @@ def generate_msa_task(self, seed, msa_name=None, max_gaps=None):
 
 
 @shared_task(base=APITaskBase, bind=True)
-def compute_dca_task(self, msa_id):
+def compute_dca_task(self, msa_id, wait=True):
     prev_task = CeleryTaskMeta.objects.filter(id=msa_id)
-    if prev_task.exists():
+    if prev_task.exists() and wait:
         self.set_progress(message="Waiting for MSA", percent=0)
         prev_task.first().wait_for_completion()
 
@@ -98,10 +99,15 @@ def compute_dca_task(self, msa_id):
 
 
 @shared_task(base=APITaskBase, bind=True)
-def map_residues_task(self, dca_id, pdb_id, seed_id, chain1, chain2):
+def map_residues_task(self, dca_id, pdb_id, seed_id, chain1, chain2, wait=True):
+    prev_task = CeleryTaskMeta.objects.filter(id=dca_id)
+    if prev_task.exists() and wait:
+        self.set_progress(message="Waiting for MSA", percent=0)
+        prev_task.first().wait_for_completion()
+
     dca = DirectCouplingAnalysis.objects.get(id=dca_id)
     seed = SeedSequence.objects.get(id=seed_id)
-    StructureInformation.fetch_pdb(pdb_id)
+    # StructureInformation.fetch_pdb(pdb_id) # Called in get_mapped_residues
     mapped_di = get_mapped_residues(
         dca.ranked_di, pdb_id, seed.fasta.path, seed.name, pdb_id, chain1, chain2
     )

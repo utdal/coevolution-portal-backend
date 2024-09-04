@@ -35,6 +35,7 @@ class MSASerializer(serializers.ModelSerializer):
             "user",
             "created",
             "expires",
+            "seed",
             "fasta",
             "depth",
             "cols",
@@ -96,6 +97,8 @@ class MapResiduesSerializer(serializers.Serializer):
     dca_id = serializers.UUIDField()
     pdb_id = serializers.CharField(max_length=8)
     seed_id = serializers.UUIDField()
+    chain1 = serializers.CharField(max_length=10)
+    chain2 = serializers.CharField(max_length=10)
 
 
 class GenerateContactsSerializer(serializers.Serializer):

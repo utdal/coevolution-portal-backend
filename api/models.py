@@ -81,14 +81,6 @@ class DirectCouplingAnalysis(APIDataObject):
     m_eff = models.IntegerField(null=True)
 
 
-class ContactMap(APIDataObject):
-    pdb = models.CharField(max_length=50, blank=True)
-    coupling_results = models.ForeignKey(
-        DirectCouplingAnalysis, on_delete=models.CASCADE, null=True
-    )
-    map = NdarrayField(null=True)
-
-
 class MappedDi(APIDataObject):
     protein_name = models.CharField(max_length=200)
     seed = models.ForeignKey(SeedSequence, on_delete=models.CASCADE)

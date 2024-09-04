@@ -139,6 +139,8 @@ class MapResidues(APIView):
                 params.validated_data.get("dca_id"),
                 params.validated_data.get("pdb_id"),
                 params.validated_data.get("seed_id"),
+                params.validated_data.get("chain1"),
+                params.validated_data.get("chain2"),
             )
 
             resp = TaskSerializer(task)

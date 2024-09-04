@@ -173,4 +173,4 @@ SPECTACULAR_SETTINGS = {
 DATA_EXPIRATION = timedelta(days=1)
 TASK_EXPIRATION = timedelta(days=1)
 DELETE_EXPIRED_DATA = False
-HMM_DATABASE = '/Users/dwb/Downloads/uniprot_sprot.fasta'
+HMM_DATABASE = BASE_DIR / 'databases/uniprot_sprot.fasta'
