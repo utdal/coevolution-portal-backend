@@ -7,6 +7,7 @@ services:
     command: celery -A backend worker --loglevel=info
     volumes:
       - .:/usr/src/app
+      - /backend:/backend
     depends_on:
       - redis
     environment:
@@ -19,6 +20,7 @@ services:
     command: celery -A backend beat --loglevel info
     volumes:
       - .:/usr/src/app/
+      - /backend:/backend
     depends_on:
       - redis
     environment:
@@ -30,6 +32,7 @@ services:
     build: .
     volumes:
       - .:/usr/src/app
+      - /backend:/backend
     ports:
       - 8000:8000
     depends_on:

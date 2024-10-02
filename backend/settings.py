@@ -132,8 +132,8 @@ STATIC_URL = 'api/static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 MEDIA_URL = 'api/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
-STATIC_ROOT = BASE_DIR / 'static'
+MEDIA_ROOT = '/backend/media'
+STATIC_ROOT = '/backend/static'
 
 # Celery settings
 CELERY_BROKER_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
@@ -173,5 +173,5 @@ SPECTACULAR_SETTINGS = {
 # Other settings
 DATA_EXPIRATION = timedelta(days=1)
 TASK_EXPIRATION = timedelta(days=1)
-DELETE_EXPIRED_DATA = False
+DELETE_EXPIRED_DATA = True
 HMM_DATABASE = BASE_DIR / 'databases/uniprot_sprot.fasta'
