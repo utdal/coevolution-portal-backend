@@ -13,6 +13,7 @@ from .serializers import (
     StructureContactsSerializer,
     TaskSerializer,
     GenerateMSASerializer,
+    SeedSerializer,
     MSASerializer,
     ComputeDCASerializer,
     DCASerializer,
@@ -21,6 +22,7 @@ from .serializers import (
 )
 from .models import (
     APITaskMeta,
+    SeedSequence,
     MappedDi,
     MultipleSequenceAlignment,
     DirectCouplingAnalysis,
@@ -55,6 +57,12 @@ def demo(request):
 class TaskViewSet(UsersUnexpiredReadOnlyModelViewSet):
     serializer_class = TaskSerializer
     queryset = APITaskMeta.objects.all()
+
+
+class SeedViewSet(UsersCreateModelMixin, UsersUnexpiredReadOnlyModelViewSet):
+    serializer_class = SeedSerializer
+    parser_classes = [parsers.MultiPartParser]
+    queryset = SeedSequence.objects.all()
 
 
 class MSAViewSet(UsersCreateModelMixin, UsersUnexpiredReadOnlyModelViewSet):
