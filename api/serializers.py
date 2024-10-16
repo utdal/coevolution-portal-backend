@@ -4,6 +4,7 @@ from .modelutils import NdarraySerializerField
 from .models import (
     APITaskMeta,
     MappedDi,
+    SeedSequence,
     MultipleSequenceAlignment,
     DirectCouplingAnalysis,
     StructureContacts,
@@ -25,6 +26,20 @@ class TaskSerializer(serializers.ModelSerializer):
             "percent",
             "successful",
         ]
+
+
+class SeedSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SeedSequence
+        fields = [
+            "id",
+            "user",
+            "created",
+            "expires",
+            "name",
+            "fasta"
+        ]
+        read_only_fields = ["id", "user", "created", "expires"]
 
 
 class MSASerializer(serializers.ModelSerializer):
