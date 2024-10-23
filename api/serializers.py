@@ -102,11 +102,12 @@ class StructureContactsSerializer(serializers.ModelSerializer):
 class GenerateMSASerializer(serializers.Serializer):
     seed = serializers.CharField(max_length=700)
     msa_name = serializers.CharField(max_length=255, required=False)
-
+    E = serializers.FloatField()
+    max_gaps = serializers.IntegerField()
 
 class ComputeDCASerializer(serializers.Serializer):
     msa_id = serializers.UUIDField()
-
+    theta = serializers.FloatField()
 
 class MapResiduesSerializer(serializers.Serializer):
     dca_id = serializers.UUIDField()

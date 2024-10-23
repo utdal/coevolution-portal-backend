@@ -101,6 +101,8 @@ class GenerateMsa(APIView):
             task = generate_msa_task.start(
                 params.validated_data.get("seed"),
                 params.validated_data.get("msa_name"),
+                params.validated_data.get("E"),
+                params.validated_data.get("max_gaps"),
                 user=get_request_user(request),
             )
 
@@ -123,6 +125,7 @@ class ComputeDca(APIView):
         if params.is_valid():
             task = compute_dca_task.start(
                 params.validated_data.get("msa_id"),
+                params.validated_data.get("theta"),
                 user=get_request_user(request),
             )
 
@@ -170,7 +173,7 @@ class GenerateContacts(APIView):
             task = generate_contacts_task.start(
                 params.validated_data.get("pdb_id"),
                 params.validated_data.get("ca_only"),
-                params.validated_data.get("threshold"),
+                params.validated_data.get("threshold")
             )
 
             resp = TaskSerializer(task)

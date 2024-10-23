@@ -33,7 +33,7 @@ from dcatoolkit import StructureInformation
 
 
 @shared_task(base=APITaskBase, bind=True)
-def generate_msa_task(self, seed, msa_name=None, max_gaps=None):
+def generate_msa_task(self, seed, msa_name=None, E=None, max_gaps=None):
     self.set_progress(message="Starting...", percent=0)
     if msa_name is None:
         msa_name = self.get_task_id()
@@ -47,7 +47,7 @@ def generate_msa_task(self, seed, msa_name=None, max_gaps=None):
 
     self.set_progress(message="Doing HMM search...", percent=10)
 
-    preprocessed_msa = hmmsearch_from_seed(seedObj.fasta.path, msa_name, settings.HMM_DATABASE)
+    preprocessed_msa = hmmsearch_from_seed(seedObj.fasta.path, msa_name, database_path=settings.HMM_DATABASE, E=E)
 
     self.set_progress(message="Filtering!", percent=90)
 
@@ -73,7 +73,7 @@ def generate_msa_task(self, seed, msa_name=None, max_gaps=None):
 
 
 @shared_task(base=APITaskBase, bind=True)
-def compute_dca_task(self, msa_id, wait=True):
+def compute_dca_task(self, msa_id, theta = 0.2, wait=True):
     prev_task = CeleryTaskMeta.objects.filter(id=msa_id)
     if prev_task.exists() and wait:
         self.set_progress(message="Waiting for MSA", percent=0)
@@ -83,7 +83,7 @@ def compute_dca_task(self, msa_id, wait=True):
 
     self.set_progress(message="Running DCA", percent=10)
     protein_family = dca_class.dca(msa.fasta.path)
-    protein_family.mean_field()
+    protein_family.mean_field(theta=theta)
 
     dca = DirectCouplingAnalysis.objects.create(
         id=self.get_task_id(),
