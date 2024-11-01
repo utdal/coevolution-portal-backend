@@ -17,6 +17,8 @@ from .views import (
     ComputeDca,
     MapResidues,
     GenerateContacts,
+    CalculateHamiltonian,
+    AlignSequences2HMM
 )
 
 urlpatterns = [
@@ -35,6 +37,8 @@ urlpatterns = [
     path("compute-dca/", ComputeDca.as_view()),
     path("map-residues/", MapResidues.as_view()),
     path("generate-contacts/", GenerateContacts.as_view()),
+    path("hamiltonian/", CalculateHamiltonian.as_view()),
+    path("align2hmm/", AlignSequences2HMM.as_view())
 ]
 
 router = DefaultRouter()
