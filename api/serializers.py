@@ -103,7 +103,7 @@ class GenerateMSASerializer(serializers.Serializer):
     seed = serializers.CharField(max_length=700)
     msa_name = serializers.CharField(max_length=255, required=False)
     E = serializers.FloatField(required=False)
-    max_gaps = serializers.IntegerField(required=False)
+    perc_max_gaps = serializers.FloatField(required=False)
 
 class ComputeDCASerializer(serializers.Serializer):
     msa_id = serializers.UUIDField()

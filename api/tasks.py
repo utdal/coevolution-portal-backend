@@ -33,7 +33,7 @@ from dcatoolkit import StructureInformation
 
 
 @shared_task(base=APITaskBase, bind=True)
-def generate_msa_task(self, seed, msa_name=None, E=None, max_gaps=None):
+def generate_msa_task(self, seed, msa_name=None, E=None, perc_max_gaps=None):
     self.set_progress(message="Starting...", percent=0)
     if msa_name is None:
         msa_name = self.get_task_id()
@@ -61,7 +61,7 @@ def generate_msa_task(self, seed, msa_name=None, E=None, max_gaps=None):
 
     preprocessed_file = io.BytesIO()
     preprocessed_msa.write(preprocessed_file, "afa")
-    filter_by_consecutive_gaps(preprocessed_file, msa.fasta.path, max_gaps)
+    filter_by_consecutive_gaps(preprocessed_file, msa.fasta.path, perc_max_gaps)
 
     msa.quality = MultipleSequenceAlignment.Qualities.GOOD
     rows, cols = get_msa_stats(msa.fasta.path)

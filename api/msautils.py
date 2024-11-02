@@ -1,4 +1,5 @@
 from typing import Optional, Union
+from numpy import percentile
 import numpy.typing as npt
 import io
 import os
@@ -211,7 +212,7 @@ def get_mapped_residues(DI_arr: npt.NDArray, rcsb_pdb_id: str, seed_sequence_fil
     return mapped_residues
 
 
-def filter_by_consecutive_gaps(input_source: Union[str, io.IOBase], output_source: Union[str, io.IOBase], max_gaps: Optional[int]) -> None:
+def filter_by_consecutive_gaps(input_source: Union[str, io.IOBase], output_source: Union[str, io.IOBase], perc_max_gaps: Optional[int]) -> None:
     """
     Filters specified input source by the number of maximum continuous gaps supplied and writes to output source.
 
@@ -229,6 +230,11 @@ def filter_by_consecutive_gaps(input_source: Union[str, io.IOBase], output_sourc
     None
     """
     input_MSA = MSATools.load_from_file(input_source)
+    input_MSA_cols = len(input_MSA.MSA[0][1])
+    if perc_max_gaps:
+        max_gaps = int((perc_max_gaps / 100) * input_MSA_cols)
+    else:
+        max_gaps = None
     output_MSA = MSATools(input_MSA.filter_by_continuous_gaps(max_gaps))
     output_MSA.write(output_source)
 

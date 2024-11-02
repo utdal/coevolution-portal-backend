@@ -102,7 +102,7 @@ class GenerateMsa(APIView):
                 params.validated_data.get("seed"),
                 params.validated_data.get("msa_name"),
                 params.validated_data.get("E"),
-                params.validated_data.get("max_gaps"),
+                params.validated_data.get("perc_max_gaps"),
                 user=get_request_user(request),
             )
 
