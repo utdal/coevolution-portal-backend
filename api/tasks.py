@@ -100,7 +100,7 @@ def compute_dca_task(self, msa_id, theta = 0.2, wait=True):
 
 
 @shared_task(base=APITaskBase, bind=True)
-def map_residues_task(self, dca_id, pdb_id, chain1, chain2, wait=True):
+def map_residues_task(self, dca_id, pdb_id, chain1, chain2, auth_chain_id_supplied, wait=True):
     prev_task = CeleryTaskMeta.objects.filter(id=dca_id)
     if prev_task.exists() and wait:
         self.set_progress(message="Waiting for MSA", percent=0)
@@ -113,7 +113,7 @@ def map_residues_task(self, dca_id, pdb_id, chain1, chain2, wait=True):
     self.set_progress(message="Mapping residues", percent=10)
     # StructureInformation.fetch_pdb(pdb_id) # Called in get_mapped_residues
     mapped_di = get_mapped_residues(
-        dca.ranked_di, pdb_id, seed.fasta.path, seed.name, pdb_id, chain1, chain2
+        dca.ranked_di, pdb_id, seed.fasta.path, seed.name, pdb_id, chain1, chain2, auth_chain_id_supplied=auth_chain_id_supplied
     )
 
     MappedDi.objects.create(
@@ -128,19 +128,34 @@ def map_residues_task(self, dca_id, pdb_id, chain1, chain2, wait=True):
 
 @shared_task(base=APITaskBase, bind=True)
 def generate_contacts_task(
-    self, pdb_id: str, ca_only: bool = False, threshold: float = 8
+    self, pdb_id: str, ca_only: bool = False, threshold: float = 8, is_cif: bool = True
 ):
     self.set_progress(message="Generating contacts", percent=0)
-    structure_info = StructureInformation.fetch_pdb(pdb_id)
+
     contacts_dict = {}
-    for chain_id_1 in structure_info.unique_chains:
-        for chain_id_2 in structure_info.unique_chains:
-            contacts_name = str(chain_id_1) + str(chain_id_2) + "_contacts"
-            contacts = structure_info.get_contacts(
-                ca_only, threshold, chain_id_1, chain_id_2
-            )
-            contacts = [(int(a), int(b)) for a, b in contacts] # sets and np ints not JSON serializable
-            contacts_dict[contacts_name] = contacts
+    if is_cif:
+        structure_info = StructureInformation.fetch_pdb(pdb_id)
+        for chain_id_1 in structure_info.unique_chains:
+            for chain_id_2 in structure_info.unique_chains:
+                contacts_name = f"{chain_id_1} [auth {structure_info.chain_auth_dict[chain_id_1]}], {chain_id_2} [auth {structure_info.chain_auth_dict[chain_id_2]}] contacts"
+                contacts = structure_info.get_contacts(
+                    ca_only, threshold, chain_id_1, chain_id_2
+                )
+                contacts = [(int(a), int(b)) for a, b in contacts] # sets and np ints not JSON serializable
+                contacts_dict[contacts_name] = contacts
+    else:
+        structure_info = StructureInformation.fetch_pdb(pdb_id, 'pdb')
+        for chain_id_1 in structure_info.unique_chains:
+            for chain_id_2 in structure_info.unique_chains:
+                contacts_name = f"{chain_id_1}, {chain_id_2} contacts"
+                contacts = structure_info.get_contacts(
+                    ca_only, threshold, chain_id_1, chain_id_2
+                )
+                contacts = [(int(a), int(b)) for a, b in contacts] # sets and np ints not JSON serializable
+                contacts_dict[contacts_name] = contacts
+    
+    
+            
     StructureContacts.objects.create(
         id=self.get_task_id(),
         pdb_id=pdb_id,

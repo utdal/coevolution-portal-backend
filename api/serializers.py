@@ -114,9 +114,11 @@ class MapResiduesSerializer(serializers.Serializer):
     pdb_id = serializers.CharField(max_length=8)
     chain1 = serializers.CharField(max_length=10)
     chain2 = serializers.CharField(max_length=10)
+    auth_chain_id_supplied = serializers.BooleanField()
 
 
 class GenerateContactsSerializer(serializers.Serializer):
     pdb_id = serializers.CharField(max_length=8)
     ca_only = serializers.BooleanField(required=False)
     threshold = serializers.FloatField(required=False)
+    is_cif = serializers.BooleanField(required=False)

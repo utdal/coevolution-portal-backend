@@ -151,6 +151,7 @@ class MapResidues(APIView):
                 params.validated_data.get("pdb_id"),
                 params.validated_data.get("chain1"),
                 params.validated_data.get("chain2"),
+                params.validated_data.get("auth_chain_id_supplied")
             )
 
             resp = TaskSerializer(task)
@@ -173,7 +174,8 @@ class GenerateContacts(APIView):
             task = generate_contacts_task.start(
                 params.validated_data.get("pdb_id"),
                 params.validated_data.get("ca_only"),
-                params.validated_data.get("threshold")
+                params.validated_data.get("threshold"),
+                params.validated_data.get("is_cif"),
             )
 
             resp = TaskSerializer(task)
