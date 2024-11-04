@@ -31,6 +31,7 @@ class CeleryTaskMeta(models.Model):
 
 class APITaskMeta(CeleryTaskMeta):
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    session_key = models.CharField(max_length=100, null=True, blank=True)
     expires = models.DateTimeField(
         default=partial(get_future_date, settings.TASK_EXPIRATION)
     )
@@ -40,6 +41,7 @@ class APITaskMeta(CeleryTaskMeta):
 class APIDataObject(models.Model):
     id = models.UUIDField(primary_key=True, default=get_random_uuid)
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    session_key = models.CharField(max_length=100, null=True, blank=True)
     created = models.DateTimeField(auto_now_add=True)
     expires = models.DateTimeField(
         default=partial(get_future_date, settings.DATA_EXPIRATION)

@@ -4,7 +4,7 @@ from django.utils import timezone
 from django.conf import settings
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status, parsers
+from rest_framework import status, parsers, mixins, viewsets
 from drf_spectacular.utils import extend_schema
 from .ProSSpeC.calculate_Hamiltonian import calc_Hamiltonian
 import pandas as pd
@@ -44,6 +44,7 @@ from .viewutils import (
     UsersUnexpiredReadOnlyModelViewSet,
     UsersCreateModelMixin,
     get_request_user,
+    get_request_session,
 )
 from .msautils import align_sequences_with_hmm
 
@@ -65,29 +66,29 @@ class TaskViewSet(UsersUnexpiredReadOnlyModelViewSet):
     queryset = APITaskMeta.objects.all()
 
 
-class SeedViewSet(UsersCreateModelMixin, UsersUnexpiredReadOnlyModelViewSet):
+class SeedViewSet(UsersCreateModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
     serializer_class = SeedSerializer
     parser_classes = [parsers.MultiPartParser]
     queryset = SeedSequence.objects.all()
 
 
-class MSAViewSet(UsersCreateModelMixin, UsersUnexpiredReadOnlyModelViewSet):
+class MSAViewSet(UsersCreateModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
     serializer_class = MSASerializer
     parser_classes = [parsers.MultiPartParser]
     queryset = MultipleSequenceAlignment.objects.all()
 
 
-class DCAViewSet(UsersUnexpiredReadOnlyModelViewSet):
+class DCAViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
     serializer_class = DCASerializer
     queryset = DirectCouplingAnalysis.objects.all()
 
 
-class MappedDiViewSet(UsersUnexpiredReadOnlyModelViewSet):
+class MappedDiViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
     serializer_class = MappedDiSerializer
     queryset = MappedDi.objects.all()
 
 
-class StructureContactsViewSet(UsersUnexpiredReadOnlyModelViewSet):
+class StructureContactsViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
     serializer_class = StructureContactsSerializer
     queryset = StructureContacts.objects.all()
 
@@ -110,6 +111,7 @@ class GenerateMsa(APIView):
                 params.validated_data.get("E"),
                 params.validated_data.get("perc_max_gaps"),
                 user=get_request_user(request),
+                session_key=get_request_session(request),
             )
 
             resp = TaskSerializer(task)
@@ -133,6 +135,7 @@ class ComputeDca(APIView):
                 params.validated_data.get("msa_id"),
                 params.validated_data.get("theta"),
                 user=get_request_user(request),
+                session_key=get_request_session(request),
             )
 
             resp = TaskSerializer(task)
@@ -157,7 +160,9 @@ class MapResidues(APIView):
                 params.validated_data.get("pdb_id"),
                 params.validated_data.get("chain1"),
                 params.validated_data.get("chain2"),
-                params.validated_data.get("auth_chain_id_supplied")
+                params.validated_data.get("auth_chain_id_supplied"),
+                user=get_request_user(request),
+                session_key=get_request_session(request),
             )
 
             resp = TaskSerializer(task)
@@ -182,6 +187,8 @@ class GenerateContacts(APIView):
                 params.validated_data.get("ca_only"),
                 params.validated_data.get("threshold"),
                 params.validated_data.get("is_cif"),
+                user=get_request_user(request),
+                session_key=get_request_session(request),
             )
 
             resp = TaskSerializer(task)
