@@ -122,3 +122,15 @@ class GenerateContactsSerializer(serializers.Serializer):
     ca_only = serializers.BooleanField(required=False)
     threshold = serializers.FloatField(required=False)
     is_cif = serializers.BooleanField(required=False)
+
+class CalculateHamiltonianSerializer(serializers.Serializer):
+    sequences = serializers.JSONField()  # headers are keys and sequences are values
+    local_fields = serializers.FileField()  # must be csv w/no headers or indices
+    couplings = serializers.FileField()  # must be csv w/no headers or indices
+    pottsH = serializers.JSONField()  # headers are keys and Hamiltonian value is the values
+
+class Align2HMMSerializer(serializers.Serializer):
+    json_input = serializers.JSONField(required=False) # headers are keys and sequences are values
+    fasta_input = serializers.FileField(required=False) # file must be fasta format
+    hmm_input =  serializers.FileField(required=True) # file must be .hmm format
+    aligned_sequences = serializers.JSONField() # headers are keys and sequences are values

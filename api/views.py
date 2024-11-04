@@ -6,6 +6,9 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, parsers
 from drf_spectacular.utils import extend_schema
+from .ProSSpeC.calculate_Hamiltonian import calc_Hamiltonian
+import pandas as pd
+from io import BytesIO
 import uuid
 
 from .serializers import (
@@ -19,6 +22,8 @@ from .serializers import (
     DCASerializer,
     MapResiduesSerializer,
     MappedDiSerializer,
+    CalculateHamiltonianSerializer,
+    Align2HMMSerializer
 )
 from .models import (
     APITaskMeta,
@@ -40,6 +45,7 @@ from .viewutils import (
     UsersCreateModelMixin,
     get_request_user,
 )
+from .msautils import align_sequences_with_hmm
 
 
 def api_home(request):
@@ -181,3 +187,77 @@ class GenerateContacts(APIView):
             resp = TaskSerializer(task)
             return Response(resp.data, status=status.HTTP_202_ACCEPTED)
         return Response(params.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class CalculateHamiltonian(APIView):
+    serializer_class = CalculateHamiltonianSerializer
+
+    def post(self, request):
+        params = CalculateHamiltonianSerializer(data=request.data)
+
+        if params.is_valid():
+            sequences = params.validated_data.get("sequences")
+            local_fields = params.validated_data.get("local_fields")
+            couplings = params.validated_data.get("couplings")
+        
+            try:
+                lf = pd.read_csv(local_fields, header=None)
+                coup = pd.read_csv(couplings, header=None)
+            
+            except Exception as e:
+                return Response({"Error": str(e)},status=status.HTTP_400_BAD_REQUEST)
+
+            try:
+                pottsH = calc_Hamiltonian(sequences.values(), coupling_tbl=coup, lf_tbl=lf)
+                results = {}
+                for idx, item in enumerate(sequences):
+                    results[item] = pottsH[idx]
+                return Response({
+                    "sequences": sequences,
+                    "pottsH": results
+                }, status=status.HTTP_200_OK)
+
+            except Exception as e:
+                return Response({"Error": str(e)},status=status.HTTP_400_BAD_REQUEST)
+
+
+class AlignSequences2HMM(APIView):
+    serializer_class = Align2HMMSerializer
+
+    def post(self, request):
+        params = Align2HMMSerializer(data=request.data)
+
+        if params.is_valid():
+            json_input = params.validated_data.get("json_input")
+            fasta_input = params.validated_data.get("fasta_input")
+            fasta_input = fasta_input.file
+            hmm_file = params.validated_data.get("hmm_input")
+            hmm_file = BytesIO(hmm_file.file.read())
+            hmm_copy = BytesIO(hmm_file.getvalue())
+            hmm_file.seek(0)
+
+            results = {}
+            if  json_input is None and fasta_input is None:
+                return Response("Error: No sequences were provided", status=status.HTTP_400_BAD_REQUEST)
+            else:
+                if json_input:
+                    try:
+                        sequences = list(json_input.values())
+                        headers = list(json_input.keys())
+                        aligned = align_sequences_with_hmm(hmm=hmm_file, sequences=sequences,headers=headers)
+                        results = results | aligned
+
+                    except Exception as e:
+                        return Response({"Error": str(e)},status=status.HTTP_400_BAD_REQUEST)
+
+                if fasta_input:
+                    try:
+                        aligned = align_sequences_with_hmm(hmm=hmm_copy, sequences=fasta_input)
+                        results = results | aligned
+
+                    except Exception as e:
+                        return Response({"Error": str(e)},status=status.HTTP_400_BAD_REQUEST)
+                
+                return Response({"aligned_sequences": results}, status=status.HTTP_200_OK)
+        else:
+            return Response("Error", status=status.HTTP_400_BAD_REQUEST)

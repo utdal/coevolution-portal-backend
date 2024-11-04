@@ -3,10 +3,9 @@ from numpy import percentile
 import numpy.typing as npt
 import io
 import os
-
+import re
 from dcatoolkit import DirectInformationData, ResidueAlignment, StructureInformation
 from dcatoolkit import MSATools
-
 from pyhmmer.plan7 import Background, HMM, Profile, OptimizedProfile, HMMFile, Pipeline, Builder
 from pyhmmer.easel import MSA, TextMSA, MSAFile, Alphabet, TextSequence, SequenceFile
 from pyhmmer.hmmer import hmmalign, hmmscan
@@ -117,29 +116,43 @@ def produce_alignment_to_protein(protein_sequence: str, seed_sequence_filepath: 
     return ResidueAlignment(best_alignment.hmm_name.decode(), best_alignment.target_name.decode(), best_alignment.hmm_from, best_alignment.target_from, best_alignment.hmm_sequence, best_alignment.target_sequence)
 
 
-def align_sequences_with_hmm(hmm: Union[str, io.BytesIO], original_MSA: Union[str, io.BytesIO], sequences: Union[list[str], str, io.IOBase], headers: Optional[list[str]] = None) -> tuple[TextMSA, TextMSA]:
-    plan7_hmm = None
+def align_sequences_with_hmm(sequences: Union[list[str], str, io.IOBase], 
+                             hmm: Union[str, io.BytesIO], 
+                             headers: Optional[Union[str, list[str]]] = None) -> dict:
+    """
+
+    Sequences are aligned to profile hmm. Sequences may be formatted in multiple ways, but if
+    provided as str or list of strings, headers may be provided. If sequences are provided as a fasta,
+    headers from the file are used.
+
+    Parameters
+    ----------
+    sequences - can be string, list of strings, or fasta file
+    hmm - can be file path/name or file object
+    headers - Optional: can be string or list of strings describing the sequences provided. Only used if
+              sequences are provided as a string or list of strings. Otherwise, the headers from the fasta 
+              are used
+
+    Returns
+    -------
+    Dictionary where keys are headers and values are aligned sequences.
+
+    """
     parsed_sequences = None
-    easel_og_TextMSA = TextMSA()
 
     with HMMFile(hmm) as hmm_file:
-        plan7_hmm = hmm_file.read()
+        hmm = hmm_file.read()
     
-    with MSAFile(original_MSA, format="afa", digital=False) as msa_file:
-        easel_og_MSA = msa_file.read()
-        if isinstance(easel_og_MSA, TextMSA):
-            easel_og_TextMSA: TextMSA = easel_og_MSA
-    
-    if isinstance(sequences, str) or isinstance(sequences, io.IOBase):
+    if not isinstance(sequences, list):
         # Check to see if FASTA
-        if (isinstance(sequences, str) and (">" in sequences or os.path.exists(sequences))) or (isinstance(sequences, io.StringIO) and ">" in sequences.getvalue()):
-            headers_from_MSA, sequences_from_MSA = zip(*MSATools.load_from_file(sequences).MSA)
-            headers = list(headers_from_MSA)
-            sequences = list(sequences_from_MSA)
-        elif isinstance(sequences, str):
+        if isinstance(sequences, str):
             sequences = sequences.split()
         elif isinstance(sequences, io.StringIO):
             sequences = sequences.getvalue().split()
+        else:
+            headers_from_MSA, sequences_from_MSA = zip(*MSATools.load_from_file(sequences).MSA)
+            headers = list(headers_from_MSA)
+            sequences = list(sequences_from_MSA)
 
     if isinstance(sequences, list) and len(sequences) > 0:
         parsed_sequences = []
@@ -149,14 +162,37 @@ def align_sequences_with_hmm(hmm: Union[str, io.BytesIO], original_MSA: Union[st
             else:
                 parsed_sequences.append(TextSequence(name=f"Sequence {str(count+1)}".encode(), sequence=sequence).digitize(Alphabet.amino()))    
         
-    if plan7_hmm is not None and parsed_sequences is not None and easel_og_TextMSA.sequences is not None:
-        aligned_sequences = hmmalign(plan7_hmm, parsed_sequences, trim=True)
+    if hmm is not None and parsed_sequences is not None:
+        aligned_sequences = hmmalign(hmm, parsed_sequences, trim=True)
+
         if isinstance(aligned_sequences, TextMSA):
-            return easel_og_TextMSA, aligned_sequences
+            return format_aligned_seqs(aligned_sequences)
         else:
             raise ValueError("Aligned sequences are not a TextMSA")
     else:
         raise ValueError("HMM, Original MSA, or sequences not loaded correctly or missing.")
+
+
+def format_aligned_seqs(aligned_obj):
+    """
+
+    Formats aligned sequence object into a dictionary where keys are the headers and sequences
+    are the values. If the sequence has been aligned, all . and lower chars are removed
+
+    Parameters
+    ----------
+    aligned_obj - pyhmmer.easel.TextMSA object 
+
+    Returns
+    -------
+    Dictionary where keys are headers and values are aligned sequences.
+
+    """
+    formatted = {}
+    for idx, item in enumerate(aligned_obj.names):
+        seq = re.sub(r"[a-z].", "", aligned_obj.alignment[idx])
+        formatted[item.decode().replace(">","")] = seq
+    return formatted
 
 
 def combine_easel_TextMSA(text_msa1: TextMSA, text_msa2: TextMSA):
