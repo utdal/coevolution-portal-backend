@@ -28,7 +28,9 @@ SECRET_KEY = os.getenv('DJANGO_SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = ["18.213.103.176"]
+ALLOWED_HOSTS = ["coevolutionary.org", "www.coevolutionary.org"]
+ 
+DATA_UPLOAD_MAX_MEMORY_SIZE = 50000000
 
 
 # Application definition
