@@ -102,20 +102,35 @@ class StructureContactsSerializer(serializers.ModelSerializer):
 class GenerateMSASerializer(serializers.Serializer):
     seed = serializers.CharField(max_length=700)
     msa_name = serializers.CharField(max_length=255, required=False)
-
+    E = serializers.FloatField(required=False)
+    perc_max_gaps = serializers.FloatField(required=False)
 
 class ComputeDCASerializer(serializers.Serializer):
     msa_id = serializers.UUIDField()
-
+    theta = serializers.FloatField(required=False)
 
 class MapResiduesSerializer(serializers.Serializer):
     dca_id = serializers.UUIDField()
     pdb_id = serializers.CharField(max_length=8)
     chain1 = serializers.CharField(max_length=10)
     chain2 = serializers.CharField(max_length=10)
+    auth_chain_id_supplied = serializers.BooleanField()
 
 
 class GenerateContactsSerializer(serializers.Serializer):
     pdb_id = serializers.CharField(max_length=8)
-    ca_only = serializers.BooleanField()
-    threshold = serializers.FloatField()
+    ca_only = serializers.BooleanField(required=False)
+    threshold = serializers.FloatField(required=False)
+    is_cif = serializers.BooleanField(required=False)
+
+class CalculateHamiltonianSerializer(serializers.Serializer):
+    sequences = serializers.JSONField()  # headers are keys and sequences are values
+    local_fields = serializers.FileField()  # must be csv w/no headers or indices
+    couplings = serializers.FileField()  # must be csv w/no headers or indices
+    pottsH = serializers.JSONField()  # headers are keys and Hamiltonian value is the values
+
+class Align2HMMSerializer(serializers.Serializer):
+    json_input = serializers.JSONField(required=False) # headers are keys and sequences are values
+    fasta_input = serializers.FileField(required=False) # file must be fasta format
+    hmm_input =  serializers.FileField(required=True) # file must be .hmm format
+    aligned_sequences = serializers.JSONField() # headers are keys and sequences are values

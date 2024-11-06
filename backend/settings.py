@@ -149,7 +149,11 @@ CELERY_BEAT_SCHEDULE = {
 }
 
 # CORS settings
-CORS_ORIGIN_ALLOW_ALL = True
+# CORS_ORIGIN_ALLOW_ALL = True
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",  # your frontend's URL
+]
+CORS_ALLOW_CREDENTIALS = True
 
 # REST Framework settings
 REST_FRAMEWORK = {
