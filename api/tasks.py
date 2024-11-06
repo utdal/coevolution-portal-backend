@@ -107,8 +107,14 @@ def map_residues_task(self, dca_id, pdb_id, chain1, chain2, auth_chain_id_suppli
         prev_task.first().wait_for_completion()
 
     dca = DirectCouplingAnalysis.objects.get(id=dca_id)
-    assert dca.msa and dca.msa.seed, "The DCA must have a seed"
-    seed = dca.msa.seed
+    # assert dca.msa and dca.msa.seed, "The DCA must have a seed"
+    if dca.msa.seed:
+        seed = dca.msa.seed
+    else:
+        seed = SeedSequence.objects.create(
+            name="Not a great seed name",
+            fasta=dca.msa.fasta
+        )
     
     self.set_progress(message="Mapping residues", percent=10)
     # StructureInformation.fetch_pdb(pdb_id) # Called in get_mapped_residues
