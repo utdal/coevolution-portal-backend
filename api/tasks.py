@@ -137,7 +137,7 @@ def generate_contacts_task(
         structure_info = StructureInformation.fetch_pdb(pdb_id)
         for chain_id_1 in structure_info.unique_chains:
             for chain_id_2 in structure_info.unique_chains:
-                contacts_name = f"{chain_id_1} [auth {structure_info.chain_auth_dict[chain_id_1]}], {chain_id_2} [auth {structure_info.chain_auth_dict[chain_id_2]}] contacts"
+                contacts_name = f"{chain_id_1} [auth {structure_info.chain_auth_dict[chain_id_1]}], {chain_id_2} [auth {structure_info.chain_auth_dict[chain_id_2]}]"
                 contacts = structure_info.get_contacts(
                     ca_only, threshold, chain_id_1, chain_id_2
                 )
@@ -147,7 +147,7 @@ def generate_contacts_task(
         structure_info = StructureInformation.fetch_pdb(pdb_id, 'pdb')
         for chain_id_1 in structure_info.unique_chains:
             for chain_id_2 in structure_info.unique_chains:
-                contacts_name = f"{chain_id_1}, {chain_id_2} contacts"
+                contacts_name = f"{chain_id_1}, {chain_id_2}"
                 contacts = structure_info.get_contacts(
                     ca_only, threshold, chain_id_1, chain_id_2
                 )
