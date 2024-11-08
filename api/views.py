@@ -237,7 +237,8 @@ class AlignSequences2HMM(APIView):
         if params.is_valid():
             json_input = params.validated_data.get("json_input")
             fasta_input = params.validated_data.get("fasta_input")
-            fasta_input = fasta_input.file
+            if fasta_input:
+                fasta_input = fasta_input.file
             hmm_file = params.validated_data.get("hmm_input")
             hmm_file = BytesIO(hmm_file.file.read())
             hmm_copy = BytesIO(hmm_file.getvalue())
