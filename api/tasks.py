@@ -73,7 +73,7 @@ def generate_msa_task(self, seed, msa_name=None, E=None, perc_max_gaps=None):
 
 
 @shared_task(base=APITaskBase, bind=True)
-def compute_dca_task(self, msa_id, theta = 0.2, wait=True):
+def compute_dca_task(self, msa_id, theta=None, wait=True):
     prev_task = CeleryTaskMeta.objects.filter(id=msa_id)
     if prev_task.exists() and wait:
         self.set_progress(message="Waiting for MSA", percent=0)
@@ -83,7 +83,11 @@ def compute_dca_task(self, msa_id, theta = 0.2, wait=True):
 
     self.set_progress(message="Running DCA", percent=10)
     protein_family = dca_class.dca(msa.fasta.path)
-    protein_family.mean_field(theta=theta)
+
+    if theta:
+        protein_family.mean_field(theta=theta)
+    else:
+        protein_family.mean_field()
 
     dca = DirectCouplingAnalysis.objects.create(
         id=self.get_task_id(),
