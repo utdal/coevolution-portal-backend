@@ -91,10 +91,17 @@ def compute_dca_task(self, msa_id, theta = 0.2, wait=True):
         expires=timezone.now() + settings.DATA_EXPIRATION,
         msa=msa
     )
-    dca.e_ij = protein_family.couplings
-    dca.h_i = protein_family.localfields
+
+    # Limit to top 5000
+    di = protein_family.DI
+    di = di[di[:, 2].argsort()[::-1]]
+    di = di[:5000]
+
+    # Not currently used, takes a lot of space
+    # dca.e_ij = protein_family.couplings
+    # dca.h_i = protein_family.localfields
     dca.m_eff = protein_family.Meff
-    dca.ranked_di = protein_family.DI
+    dca.ranked_di = di
     dca.save()
     self.set_progress(message="", percent=100)
 
