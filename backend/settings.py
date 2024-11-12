@@ -181,6 +181,6 @@ DATA_EXPIRATION = timedelta(days=1)
 TASK_EXPIRATION = timedelta(days=1)
 
 DELETE_EXPIRED_DATA = True
-HMM_DATABASE = BASE_DIR / 'databases/uniprot_sprot.fasta'
+HMM_DATABASE = '/data/uniprot_trembl2.fasta.gz'
 DATA_UPLOAD_MAX_MEMORY_SIZE = 2621440000  # 2500 MB
 
