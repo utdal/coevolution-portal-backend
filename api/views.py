@@ -17,6 +17,7 @@ from .serializers import (
     TaskSerializer,
     GenerateMSASerializer,
     SeedSerializer,
+    PDBSerializer,
     MSASerializer,
     ComputeDCASerializer,
     DCASerializer,
@@ -28,6 +29,7 @@ from .serializers import (
 from .models import (
     APITaskMeta,
     SeedSequence,
+    PDB,
     MappedDi,
     MultipleSequenceAlignment,
     DirectCouplingAnalysis,
@@ -70,6 +72,12 @@ class SeedViewSet(UsersCreateModelMixin, mixins.RetrieveModelMixin, viewsets.Gen
     serializer_class = SeedSerializer
     parser_classes = [parsers.MultiPartParser]
     queryset = SeedSequence.objects.all()
+
+
+class PDBViewSet(UsersCreateModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
+    serializer_class = PDBSerializer
+    parser_classes = [parsers.MultiPartParser]
+    queryset = PDB.objects.all()
 
 
 class MSAViewSet(UsersCreateModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):

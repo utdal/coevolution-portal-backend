@@ -5,6 +5,7 @@ from .models import (
     APITaskMeta,
     MappedDi,
     SeedSequence,
+    PDB,
     MultipleSequenceAlignment,
     DirectCouplingAnalysis,
     StructureContacts,
@@ -38,6 +39,22 @@ class SeedSerializer(serializers.ModelSerializer):
             "expires",
             "name",
             "fasta"
+        ]
+        read_only_fields = ["id", "user", "created", "expires"]
+
+
+class PDBSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PDB
+        fields = [
+            "id",
+            "user",
+            "created",
+            "expires",
+            "name",
+            "pdb_id",
+            "pdb_file",
+            "file_type"
         ]
         read_only_fields = ["id", "user", "created", "expires"]
 

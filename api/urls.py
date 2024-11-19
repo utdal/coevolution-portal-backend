@@ -9,6 +9,7 @@ from .views import (
     demo,
     TaskViewSet,
     SeedViewSet,
+    PDBViewSet,
     MSAViewSet,
     DCAViewSet,
     MappedDiViewSet,
@@ -44,6 +45,7 @@ urlpatterns = [
 router = DefaultRouter()
 router.register("tasks", TaskViewSet, basename='task')
 router.register("seeds", SeedViewSet, basename='seed')
+router.register("pdbs", PDBViewSet, basename='pdb')
 router.register("msas", MSAViewSet, basename='msa')
 router.register("dcas", DCAViewSet, basename='dca')
 router.register("mapped-dis", MappedDiViewSet, basename='mapped-di')
