@@ -17,6 +17,7 @@ class TaskSerializer(serializers.ModelSerializer):
         model = APITaskMeta
         fields = [
             "id",
+            "session_key",
             "user",
             "state",
             "name",

@@ -42,8 +42,9 @@ from .tasks import (
     map_residues_task,
 )
 from .viewutils import (
-    UsersReadOnlyModelViewSet,
-    UsersUnexpiredReadOnlyModelViewSet,
+    # UsersReadOnlyModelViewSet,
+    # UsersUnexpiredReadOnlyModelViewSet,
+    APIObjectModelViewSet,
     UsersCreateModelMixin,
     get_request_user,
     get_request_session,
@@ -63,7 +64,7 @@ def demo(request):
     return render(request, "demo.html")
 
 
-class TaskViewSet(UsersUnexpiredReadOnlyModelViewSet):
+class TaskViewSet(APIObjectModelViewSet):
     serializer_class = TaskSerializer
     queryset = APITaskMeta.objects.all()
 
