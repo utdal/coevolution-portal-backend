@@ -85,9 +85,9 @@ def compute_dca_task(self, msa_id, theta=None, wait=True):
     protein_family = dca_class.dca(msa.fasta.path)
 
     if theta:
-        protein_family.mean_field(theta=theta)
+        protein_family.mean_field(theta=theta, cdist_batch_size=20000)
     else:
-        protein_family.mean_field()
+        protein_family.mean_field(cdist_batch_size=20000)
 
     dca = DirectCouplingAnalysis.objects.create(
         id=self.get_task_id(),
