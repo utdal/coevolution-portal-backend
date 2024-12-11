@@ -55,6 +55,16 @@ class SeedSequence(APIDataObject):
     )
 
 
+class PDB(APIDataObject):
+    name = models.CharField(max_length=200)
+    pdb_id = models.CharField(max_length=8)
+    pdb_file = models.FileField(
+        upload_to=partial(get_user_spesific_path, subfolder="pdbs"),
+        null=True
+    )
+    file_type = models.CharField(max_length=10)
+
+
 class MultipleSequenceAlignment(APIDataObject):
     class Qualities(models.IntegerChoices):
         NA = 0

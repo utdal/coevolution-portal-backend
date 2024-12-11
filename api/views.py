@@ -17,6 +17,7 @@ from .serializers import (
     TaskSerializer,
     GenerateMSASerializer,
     SeedSerializer,
+    PDBSerializer,
     MSASerializer,
     ComputeDCASerializer,
     DCASerializer,
@@ -28,6 +29,7 @@ from .serializers import (
 from .models import (
     APITaskMeta,
     SeedSequence,
+    PDB,
     MappedDi,
     MultipleSequenceAlignment,
     DirectCouplingAnalysis,
@@ -40,8 +42,9 @@ from .tasks import (
     map_residues_task,
 )
 from .viewutils import (
-    UsersReadOnlyModelViewSet,
-    UsersUnexpiredReadOnlyModelViewSet,
+    # UsersReadOnlyModelViewSet,
+    # UsersUnexpiredReadOnlyModelViewSet,
+    APIObjectModelViewSet,
     UsersCreateModelMixin,
     get_request_user,
     get_request_session,
@@ -61,7 +64,7 @@ def demo(request):
     return render(request, "demo.html")
 
 
-class TaskViewSet(UsersUnexpiredReadOnlyModelViewSet):
+class TaskViewSet(APIObjectModelViewSet):
     serializer_class = TaskSerializer
     queryset = APITaskMeta.objects.all()
 
@@ -70,6 +73,12 @@ class SeedViewSet(UsersCreateModelMixin, mixins.RetrieveModelMixin, viewsets.Gen
     serializer_class = SeedSerializer
     parser_classes = [parsers.MultiPartParser]
     queryset = SeedSequence.objects.all()
+
+
+class PDBViewSet(UsersCreateModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
+    serializer_class = PDBSerializer
+    parser_classes = [parsers.MultiPartParser]
+    queryset = PDB.objects.all()
 
 
 class MSAViewSet(UsersCreateModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
