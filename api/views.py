@@ -9,6 +9,7 @@ from drf_spectacular.utils import extend_schema
 from .ProSSpeC.calculate_Hamiltonian import calc_Hamiltonian
 import pandas as pd
 from io import BytesIO
+import json
 import uuid
 
 from .serializers import (
@@ -200,9 +201,16 @@ class CalculateHamiltonian(APIView):
     serializer_class = CalculateHamiltonianSerializer
 
     def post(self, request):
-        params = CalculateHamiltonianSerializer(data=request.data)
+        if type(request.data.get("sequences")) is str:
+            try:
+                sequences = json.loads(request.data.get("sequences"))
+                params = CalculateHamiltonianSerializer(data={"sequences":sequences, "local_fields": request.data.get("local_fields"), "couplings": request.data.get("couplings"),'pottsH':None})
+            except:
+                return Response({"Error": "Invalid json format"}, status=400)
+        else:
+            params = CalculateHamiltonianSerializer(data=request.data)
 
-        if params.is_valid():
+        if params.is_valid() or type(request.data.get("sequences")) is str:
             sequences = params.validated_data.get("sequences")
             local_fields = params.validated_data.get("local_fields")
             couplings = params.validated_data.get("couplings")
@@ -232,7 +240,24 @@ class AlignSequences2HMM(APIView):
     serializer_class = Align2HMMSerializer
 
     def post(self, request):
-        params = Align2HMMSerializer(data=request.data)
+
+        if request.data.get("json_input") == "null":
+            json_input = None
+        elif type(request.data.get("json_input")) is str:
+            try:
+                json_input = json.loads(request.data.get("json_input"))
+            except:
+                return Response({"Error": "Invalid json format"}, status=400)
+        else:
+            json_input = request.data.get("json_input")
+        
+        if request.data.get("fasta_input") == "null":
+            fasta_input = None
+        else:
+            fasta_input = request.data.get("fasta_input")
+        
+
+        params = Align2HMMSerializer(data={"json_input": json_input, "fasta_input": fasta_input, "hmm_input": request.data.get("hmm_input"), "aligned_sequences": request.data.get("aligned_sequences")})
 
         if params.is_valid():
             json_input = params.validated_data.get("json_input")

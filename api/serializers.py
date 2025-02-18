@@ -124,13 +124,13 @@ class GenerateContactsSerializer(serializers.Serializer):
     is_cif = serializers.BooleanField(required=False)
 
 class CalculateHamiltonianSerializer(serializers.Serializer):
-    sequences = serializers.JSONField()  # headers are keys and sequences are values
-    local_fields = serializers.FileField()  # must be csv w/no headers or indices
-    couplings = serializers.FileField()  # must be csv w/no headers or indices
-    pottsH = serializers.JSONField()  # headers are keys and Hamiltonian value is the values
+    sequences = serializers.JSONField(required =True)  # headers are keys and sequences are values
+    local_fields = serializers.FileField(required=True)  # must be csv w/no headers or indices
+    couplings = serializers.FileField(required=True)  # must be csv w/no headers or indices
+    pottsH = serializers.JSONField(required=False, allow_null=True)  # headers are keys and Hamiltonian value is the values
 
 class Align2HMMSerializer(serializers.Serializer):
-    json_input = serializers.JSONField(required=False) # headers are keys and sequences are values
-    fasta_input = serializers.FileField(required=False) # file must be fasta format
-    hmm_input =  serializers.FileField(required=True) # file must be .hmm format
-    aligned_sequences = serializers.JSONField() # headers are keys and sequences are values
+    json_input = serializers.JSONField(required=False, allow_null=True)  # headers are keys and sequences are values
+    fasta_input = serializers.FileField(required=False, allow_null=True)  # file must be fasta format
+    hmm_input =  serializers.FileField(required=True)  # file must be .hmm format
+    aligned_sequences = serializers.JSONField(required=False, allow_null=True)  # headers are keys and sequences are values
