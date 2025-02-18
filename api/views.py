@@ -219,7 +219,7 @@ class CalculateHamiltonian(APIView):
         else:
             params = CalculateHamiltonianSerializer(data=request.data)
 
-        if params.is_valid() or type(request.data.get("sequences")) is str:
+        if params.is_valid():
             sequences = params.validated_data.get("sequences")
             local_fields = params.validated_data.get("local_fields")
             couplings = params.validated_data.get("couplings")
