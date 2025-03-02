@@ -210,26 +210,38 @@ class CalculateHamiltonian(APIView):
     serializer_class = CalculateHamiltonianSerializer
 
     def post(self, request):
+        # if sequences is a string, try to parse it as json
         if type(request.data.get("sequences")) is str:
             try:
                 sequences = json.loads(request.data.get("sequences"))
-                params = CalculateHamiltonianSerializer(data={"sequences":sequences, "local_fields": request.data.get("local_fields"), "couplings": request.data.get("couplings"),'pottsH':None})
             except:
                 return Response({"Error": "Invalid json format"}, status=400)
         else:
-            params = CalculateHamiltonianSerializer(data=request.data)
+            sequences = request.data.get("sequences")
+        
+        
+        params = CalculateHamiltonianSerializer(data={"sequences":sequences, "local_fields": request.data.get("local_fields"), "couplings": request.data.get("couplings"),'pottsH':None, 'project_id': request.data.get("project_id")})
 
         if params.is_valid():
             sequences = params.validated_data.get("sequences")
-            local_fields = params.validated_data.get("local_fields")
-            couplings = params.validated_data.get("couplings")
-        
-            try:
-                lf = pd.read_csv(local_fields, header=None)
-                coup = pd.read_csv(couplings, header=None)
+            project_id = params.validated_data.get("project_id")
+            if project_id:
+                try:
+                    lf = pd.read_csv(f"data/local_fields/{project_id}.csv", header=None)
+                    coup = pd.read_csv(f"data/couplings/{project_id}.csv", header=None)
+                except Exception as e:
+                    return Response({"Error": str(e)+ "Could not load project files"},status=status.HTTP_400_BAD_REQUEST)
+
+            else:
+                local_fields = params.validated_data.get("local_fields")
+                couplings = params.validated_data.get("couplings")
             
-            except Exception as e:
-                return Response({"Error": str(e)},status=status.HTTP_400_BAD_REQUEST)
+                try:
+                    lf = pd.read_csv(local_fields, header=None)
+                    coup = pd.read_csv(couplings, header=None)
+                
+                except Exception as e:
+                    return Response({"Error": str(e)+ "Could not read local fields or couplings"},status=status.HTTP_400_BAD_REQUEST)
 
             try:
                 pottsH = calc_Hamiltonian(sequences.values(), coupling_tbl=coup, lf_tbl=lf)

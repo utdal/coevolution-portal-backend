@@ -142,9 +142,10 @@ class GenerateContactsSerializer(serializers.Serializer):
     is_cif = serializers.BooleanField(required=False)
 
 class CalculateHamiltonianSerializer(serializers.Serializer):
+    project_id = serializers.CharField(required=False, allow_null=True) # used to pull precomputed couplings and local fields
     sequences = serializers.JSONField(required =True)  # headers are keys and sequences are values
-    local_fields = serializers.FileField(required=True)  # must be csv w/no headers or indices
-    couplings = serializers.FileField(required=True)  # must be csv w/no headers or indices
+    local_fields = serializers.FileField(required=False, allow_null=True)  # must be csv w/no headers or indices
+    couplings = serializers.FileField(required=False, allow_null=True)  # must be csv w/no headers or indices
     pottsH = serializers.JSONField(required=False, allow_null=True)  # headers are keys and Hamiltonian value is the values
 
 class Align2HMMSerializer(serializers.Serializer):
