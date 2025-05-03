@@ -86,7 +86,7 @@ def hmmsearch_from_seed(seed_sequence_filepath: str, seed_name: str, E: Optional
         raise ValueError("No hits found.")
 
 
-def produce_alignment_to_protein(protein_sequence: str, seed_sequence_filepath: str, seed_name: str, protein_name: str) -> ResidueAlignment:
+def produce_alignment_to_protein(seed_name: str, seed_sequence_filepath: str, protein_name: str, protein_sequence: str, valid_residues: list[tuple[int, str]]) -> ResidueAlignment:
     """
     Produces a ResidueAlignment object that represents the alignment between the MSA generated from an HMM and a specified target protein sequence.
 
@@ -113,7 +113,8 @@ def produce_alignment_to_protein(protein_sequence: str, seed_sequence_filepath: 
     # Queries refers to the protein sequence, which yields the target of the alignment.
     # Profiles refers to the domain's profile HMM generated from the domain / full protein's seed sequence. The same HMM used to generate an MSA.
     best_alignment = hits[0][0].best_domain.alignment
-    return ResidueAlignment(best_alignment.hmm_name.decode(), best_alignment.target_name.decode(), best_alignment.hmm_from, best_alignment.target_from, best_alignment.hmm_sequence, best_alignment.target_sequence)
+    
+    return ResidueAlignment(best_alignment.hmm_name.decode(), best_alignment.target_name.decode(), best_alignment.hmm_from, best_alignment.target_from, best_alignment.hmm_sequence, best_alignment.target_sequence, valid_residues=valid_residues)
 
 
 def align_sequences_with_hmm(sequences: Union[list[str], str, io.IOBase], 
@@ -210,7 +211,7 @@ def combine_easel_TextMSA(text_msa1: TextMSA, text_msa2: TextMSA):
         print(sequence)
 
 
-def get_mapped_residues(DI_arr: npt.NDArray, rcsb_pdb_id: str, seed_sequence_filepath: str, seed_name: str, protein_name: str, chain1: str, chain2: str, pairs_only: bool=False, auth_chain_id_supplied: bool=False) -> npt.NDArray:
+def get_mapped_residues(DI_arr: npt.NDArray, seed_name: str, seed_sequence_filepath: str, protein_name: str, protein_sequence_1: str, protein_sequence_2: str, valid_residues_1: list[tuple[int, str]], valid_residues_2: list[tuple[int, str]], pairs_only: bool=False) -> npt.NDArray:
     """
     Get the residues supplied mapped to the protein structure indexed at the RCSB PDB id supplied. The elements of pairs are mapped to chain1 and chain2 supplied respectively.
 
@@ -220,31 +221,35 @@ def get_mapped_residues(DI_arr: npt.NDArray, rcsb_pdb_id: str, seed_sequence_fil
         Array of DI pairs and their values represented as a 3-column ndarray.
     rcsb_pdb_id : str
         The PDB ID of the protein structure of interest that will be fetched from RCSB.
-    seed_sequence_filepath : str
-        Filepath of the seed sequence used to generate the HMM & Profiles needed to produce the MSA.
     seed_name : str
         The name of the seed supplied. Used to label the domain portion of the alignment.
+    seed_sequence_filepath : str
+        Filepath of the seed sequence used to generate the HMM & Profiles needed to produce the MSA.
     protein_name : str
         The name of the protein supplied. Used to label the target portion of the alignment.
-    chain1 : str
-        ID of the first chain that the residues of the first column of a DI pair are mapped to.
-    chain2 : str
-        ID of the second chain that the residues of the second column of a DI pair are mapped to.
+    protein_sequence_1 : str
+        Sequence of the protein or chain that the first column of your DI array maps to.
+    protein_sequence_2 : str
+        Sequence of the protein or chain that the second column of your DI array maps to.
+    protein_offset_1 : int
+        Residue index where the first protein sequence starts.
+    protein_offset_2 : int
+        Residue index where the second protein sequence starts.
     pairs_only : bool
-        True if we should drop the 3rd, DI column.
-    auth_chain_id_supplied : bool, default=False
-        True if auth chain id is supplied.
+        True if we should drop the 3rd, DI, column.
+    
     
     Returns
     -------
     mapped_residues : numpy.ndarray
         The residues corresponding to the MSA generated from the HMM profile mapped to the structure supplied.
     """
-    structure = StructureInformation.fetch_pdb(rcsb_pdb_id)
-    res_align = produce_alignment_to_protein(structure.get_non_missing_sequence(chain1, auth_chain_id_supplied=auth_chain_id_supplied), seed_sequence_filepath=seed_sequence_filepath, seed_name=seed_name, protein_name=protein_name)
-    res_align = produce_alignment_to_protein(structure.get_non_missing_sequence(chain2, auth_chain_id_supplied=auth_chain_id_supplied), seed_sequence_filepath=seed_sequence_filepath, seed_name=seed_name, protein_name=protein_name)
+    res_align_1 = produce_alignment_to_protein(protein_sequence=protein_sequence_1, seed_sequence_filepath=seed_sequence_filepath, seed_name=seed_name, protein_name=protein_name, valid_residues=valid_residues_1)
+    res_align_2 = produce_alignment_to_protein(protein_sequence=protein_sequence_2, seed_sequence_filepath=seed_sequence_filepath, seed_name=seed_name, protein_name=protein_name, valid_residues=valid_residues_2)
     DI_data = DirectInformationData.load_as_ndarray(DI_arr)
-    mapped_residues = DI_data.get_ranked_mapped_pairs(res_align, res_align, pairs_only=pairs_only)
+    mapped_residues = DI_data.get_ranked_mapped_pairs(res_align_1, res_align_2, pairs_only=pairs_only)
+    #print(mapped_residues)
+    print(res_align_1)
     return mapped_residues
 
 
@@ -293,3 +298,63 @@ def get_msa_stats(msa_path: str) -> tuple[int, int]:
     rows = len(msa)
     cols = len(msa.MSA[0][1])
     return rows, cols
+
+
+from dca.dca_class import dca
+import numpy as np
+import matplotlib.pyplot as plt
+
+def run_dca_internal(filepath: str):
+    protein_family = dca(filepath)
+    protein_family.mean_field()
+    np.savetxt(f"{filepath.split("_")[0]}.DI", protein_family.DI)
+
+def plot_dca_internal(pdb_id, pdb_type, chain, auth_chain, auth_seq_id, seed_name):
+    DI_arr = np.loadtxt(f'{pdb_id}/{pdb_id}_mat.DI')[:, [0,1,3]]
+    DI_arr = DI_arr[DI_arr[:,2].argsort()[::-1]]
+    DI_arr = DI_arr[:800]
+    
+    coords = []
+    if pdb_type == 'mmcif':
+        struc = StructureInformation.fetch_pdb(pdb_id, pdb_type)
+        coords = struc.get_contacts(False, 8, chain, chain, auth_seq_id=auth_seq_id, auth_chain_id_supplied=auth_chain)
+        chain_seq = struc.get_non_missing_sequence(chain, auth_chain)
+        DI_arr = get_mapped_residues(DI_arr, seed_name, f'{pdb_id}/{pdb_id}_seed.fasta', pdb_id, chain_seq, chain_seq, struc.get_valid_chain_residues(chain_id=chain, auth_seq_id=auth_seq_id, auth_chain_id_supplied=auth_chain), struc.get_valid_chain_residues(chain_id=chain, auth_seq_id=auth_seq_id, auth_chain_id_supplied=auth_chain))
+    elif pdb_type == 'pdb':
+        struc = StructureInformation.fetch_pdb(pdb_id, pdb_type)
+        coords = struc.get_contacts(False, 8, chain, chain)
+        chain_seq = struc.get_non_missing_sequence(chain)
+        DI_arr = get_mapped_residues(DI_arr, seed_name, f'{pdb_id}/{pdb_id}_seed.fasta', pdb_id, chain_seq, chain_seq, struc.get_valid_chain_residues(chain_id=chain), struc.get_valid_chain_residues(chain_id=chain))
+
+        
+    DI_arr = np.array(DI_arr.tolist())
+    #print(DI_arr)
+    plt.scatter([x for x,y in coords], [y for x, y in coords], s=3, c='grey')
+    plt.scatter(DI_arr[:, 0], DI_arr[:, 1], s=2, c='red')
+    plt.show()
+
+glitchy_msas = ['1pzs/1pzs_MSA.afa_filtered10000_filtered48', '3d7i/3d7i_MSA.afa_filtered10000_filtered21', '3ddv/3ddv_MSA.afa_filtered10000_filtered47', '3f52/3f52_MSA.afa_filtered10000_filtered22']
+#for glitchy_msa in glitchy_msas:
+# run_dca_internal(glitchy_msas[3 ])
+
+
+#print(produce_alignment_to_protein('CISD3_seed_truc', 'CISD3_seed_truc.fasta', '6avj', StructureInformation.fetch_pdb("6avj", 'pdb').get_non_missing_sequence('A'), 0))
+#print(produce_alignment_to_protein("1pzs_seed", "1pzs_seed.fasta", "1pzs_protein", struc_1pzs.non_missing_sequences['A'], struc_1pzs.get_shift_values('A', 'A')[0]))
+
+# struc_3d7i = StructureInformation.fetch_pdb("3d7i", 'pdb')
+# print(type(struc_3d7i))
+# print(list(sorted(struc_3d7i.get_contacts(False, 8, 'A', 'A', True))))
+# print(struc_3d7i.get_shift_values('A', 'A'))
+
+#struc_1pzs_cif = StructureInformation.fetch_pdb("1pzs", 'mmcif')
+#struc_1pzs_pdb = StructureInformation.fetch_pdb("1pzs", 'pdb')
+
+#print(struc_1pzs_cif.get_shift_values('A', 'A', False))     # Apply the shift iff the auth_res_ids is TRUE. The author is the one that's shifted, not my 1-indexed CIF
+#print(struc_1pzs_pdb.get_shift_values('A', 'A'))            # Apply the shift iff the auth_res_ids is 
+
+#plot_dca_internal('3ddv', 'mmcif', 'B', False, False, 'decarboxylase')
+
+#print(struc_1pzs_cif.get_non_missing_sequence('A'))
+#print(StructureInformation.fetch_pdb("6avj", 'mmcif').get_valid_chain_residues('A'))
+#print(produce_alignment_to_protein('SODS', '1pzs/1pzs_seed copy.fasta', '1pzs', "QSLTSTLTAPDGTKVATAKFEFANGYATVTIATTGVGKLTPGFHGLHIHQVGKCEPNSVAPTGGAPGNFLSAGGHYHVPGHTGTPASGDLASLQVRGDGSAMLVTTTDAFTMDDLLSGAKTAIIIHAGADNFANIPPERYVQVNGTPGPDETTLTTGDAGKRVACGVIGSG", 0))
+plot_dca_internal('3ddv', 'mmcif', 'B', False, False, 'decarboxylase')

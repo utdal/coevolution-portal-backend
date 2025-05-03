@@ -21,6 +21,7 @@ from .models import (
     SeedSequence,
     MappedDi,
     StructureContacts,
+    PDB
 )
 from .taskutils import APITaskBase
 from .msautils import (
@@ -64,7 +65,7 @@ def generate_msa_task(self, seed, msa_name=None, E=None, perc_max_gaps=None):
     filter_by_consecutive_gaps(preprocessed_file, msa.fasta.path, perc_max_gaps)
 
     msa.quality = MultipleSequenceAlignment.Qualities.GOOD
-    rows, cols = get_msa_stats(msa.fasta.path)
+    rows, cols = get_msa_stats(msa.fasta.path) 
     msa.depth = rows
     msa.cols = cols
     msa.save()
@@ -99,6 +100,8 @@ def compute_dca_task(self, msa_id, theta=None, wait=True):
     # Limit to top 5000
     di = protein_family.DI
     di = di[di[:, 2].argsort()[::-1]]
+    di[:, 0] = di[:, 0] + 1
+    di[:, 1] = di[:, 1] + 1
     di = di[:5000]
 
     # Not currently used, takes a lot of space
@@ -128,9 +131,25 @@ def map_residues_task(self, dca_id, pdb_id, chain1, chain2, auth_chain_id_suppli
         )
     
     self.set_progress(message="Mapping residues", percent=10)
+    if len(pdb_id) <= 8:
+        structure_information = StructureInformation.fetch_pdb(pdb_id, 'mmcif')
+        protein_sequence_1 = structure_information.get_non_missing_sequence(chain1, auth_chain_id_supplied)
+        protein_sequence_2 = structure_information.get_non_missing_sequence(chain2, auth_chain_id_supplied)
+    else:
+        pdb_model = PDB.objects.get(id=pdb_id)
+        
+        if pdb_model.file_type == 'cif':
+            protein_sequence_1 = StructureInformation.read_mmCIF_file(pdb_model.pdb_file.path).get_non_missing_sequence(chain1, auth_chain_id_supplied)
+            protein_sequence_2 = StructureInformation.read_mmCIF_file(pdb_model.pdb_file.path).get_non_missing_sequence(chain2, auth_chain_id_supplied)
+        elif pdb_model.file_type == 'pdb':
+            protein_sequence_1 = StructureInformation.read_pdb_file(pdb_model.pdb_file.path).get_non_missing_sequence(chain1)
+            protein_sequence_2 = StructureInformation.read_pdb_file(pdb_model.pdb_file.path).get_non_missing_sequence(chain2)
     # StructureInformation.fetch_pdb(pdb_id) # Called in get_mapped_residues
+    
+
+
     mapped_di = get_mapped_residues(
-        dca.ranked_di, pdb_id, seed.fasta.path, seed.name, pdb_id, chain1, chain2, auth_chain_id_supplied=auth_chain_id_supplied
+        dca.ranked_di, seed.name, seed.fasta.path, pdb_id, protein_sequence_1, protein_sequence_2
     )
 
     MappedDi.objects.create(
@@ -151,7 +170,7 @@ def generate_contacts_task(
 
     contacts_dict = {}
     if is_cif:
-        structure_info = StructureInformation.fetch_pdb(pdb_id)
+        structure_info = StructureInformation.fetch_pdb(pdb_id, 'mmcif')
         for chain_id_1 in structure_info.unique_chains:
             for chain_id_2 in structure_info.unique_chains:
                 contacts_name = f"{chain_id_1} [auth {structure_info.chain_auth_dict[chain_id_1]}], {chain_id_2} [auth {structure_info.chain_auth_dict[chain_id_2]}]"

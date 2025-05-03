@@ -68,7 +68,7 @@ def produce_alignment_to_protein(protein_sequence: str, seed_sequence_filepath: 
     return ResidueAlignment(best_alignment.hmm_name.decode(), best_alignment.target_name.decode(), best_alignment.target_from, best_alignment.hmm_from, best_alignment.hmm_sequence, best_alignment.target_sequence)
 
 def get_mapped_residues(DI_arr: npt.NDArray, rcsb_pdb_id: str, seed_sequence_filepath, seed_name, protein_name):
-    structure = StructureInformation.fetch_pdb(rcsb_pdb_id)
+    structure = StructureInformation.fetch_pdb(rcsb_pdb_id, 'mmcif')
     res_align = produce_alignment_to_protein(structure.full_sequence, seed_sequence_filepath=seed_sequence_filepath, seed_name=seed_name, protein_name=protein_name)
     res_align = produce_alignment_to_protein(structure.non_missing_sequence, seed_sequence_filepath=seed_sequence_filepath, seed_name=seed_name, protein_name=protein_name)
     CISD3_DI_data = DirectInformationData.load_as_ndarray(DI_arr)
