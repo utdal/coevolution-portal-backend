@@ -2,7 +2,6 @@ from typing import Optional, Union
 from numpy import percentile
 import numpy.typing as npt
 import io
-import os
 import re
 from dcatoolkit import DirectInformationData, ResidueAlignment, StructureInformation
 from dcatoolkit import MSATools
@@ -45,7 +44,7 @@ def generate_hmm_and_profiles(seed_sequence_filepath: str, seed_name: str) -> tu
     raise ValueError("Invalid hmm data produced.")
 
 
-def hmmsearch_from_seed(seed_sequence_filepath: str, seed_name: str, E: Optional[float], T: Optional[float] = None, database_path: str="/mfs/io/groups/morcos/uniprot_db/uniprot_sprot_trembl.fasta") -> TextMSA:
+def hmmsearch_from_seed(seed_sequence_filepath: str, seed_name: str, E: Optional[float], T: Optional[float] = None, database_path: str="databases/uniprot_sprot_trembl.fasta.gz") -> TextMSA:
     """
     Generates an HMM and associated files needed and produces an MSA using hmmsearch functionality.
 
@@ -248,8 +247,6 @@ def get_mapped_residues(DI_arr: npt.NDArray, seed_name: str, seed_sequence_filep
     res_align_2 = produce_alignment_to_protein(protein_sequence=protein_sequence_2, seed_sequence_filepath=seed_sequence_filepath, seed_name=seed_name, protein_name=protein_name, valid_residues=valid_residues_2)
     DI_data = DirectInformationData.load_as_ndarray(DI_arr)
     mapped_residues = DI_data.get_ranked_mapped_pairs(res_align_1, res_align_2, pairs_only=pairs_only)
-    #print(mapped_residues)
-    print(res_align_1)
     return mapped_residues
 
 
@@ -271,7 +268,7 @@ def filter_by_consecutive_gaps(input_source: Union[str, io.IOBase], output_sourc
     None
     """
     input_MSA = MSATools.load_from_file(input_source)
-    input_MSA_cols = len(input_MSA.MSA[0][1])
+    input_MSA_cols = sum(c.isalpha() for c in input_MSA.MSA[0][1])
     if perc_max_gaps:
         max_gaps = int((perc_max_gaps / 100) * input_MSA_cols)
     else:
@@ -299,62 +296,3 @@ def get_msa_stats(msa_path: str) -> tuple[int, int]:
     cols = len(msa.MSA[0][1])
     return rows, cols
 
-
-from dca.dca_class import dca
-import numpy as np
-import matplotlib.pyplot as plt
-
-def run_dca_internal(filepath: str):
-    protein_family = dca(filepath)
-    protein_family.mean_field()
-    np.savetxt(f"{filepath.split("_")[0]}.DI", protein_family.DI)
-
-def plot_dca_internal(pdb_id, pdb_type, chain, auth_chain, auth_seq_id, seed_name):
-    DI_arr = np.loadtxt(f'{pdb_id}/{pdb_id}_mat.DI')[:, [0,1,3]]
-    DI_arr = DI_arr[DI_arr[:,2].argsort()[::-1]]
-    DI_arr = DI_arr[:800]
-    
-    coords = []
-    if pdb_type == 'mmcif':
-        struc = StructureInformation.fetch_pdb(pdb_id, pdb_type)
-        coords = struc.get_contacts(False, 8, chain, chain, auth_seq_id=auth_seq_id, auth_chain_id_supplied=auth_chain)
-        chain_seq = struc.get_non_missing_sequence(chain, auth_chain)
-        DI_arr = get_mapped_residues(DI_arr, seed_name, f'{pdb_id}/{pdb_id}_seed.fasta', pdb_id, chain_seq, chain_seq, struc.get_valid_chain_residues(chain_id=chain, auth_seq_id=auth_seq_id, auth_chain_id_supplied=auth_chain), struc.get_valid_chain_residues(chain_id=chain, auth_seq_id=auth_seq_id, auth_chain_id_supplied=auth_chain))
-    elif pdb_type == 'pdb':
-        struc = StructureInformation.fetch_pdb(pdb_id, pdb_type)
-        coords = struc.get_contacts(False, 8, chain, chain)
-        chain_seq = struc.get_non_missing_sequence(chain)
-        DI_arr = get_mapped_residues(DI_arr, seed_name, f'{pdb_id}/{pdb_id}_seed.fasta', pdb_id, chain_seq, chain_seq, struc.get_valid_chain_residues(chain_id=chain), struc.get_valid_chain_residues(chain_id=chain))
-
-        
-    DI_arr = np.array(DI_arr.tolist())
-    #print(DI_arr)
-    plt.scatter([x for x,y in coords], [y for x, y in coords], s=3, c='grey')
-    plt.scatter(DI_arr[:, 0], DI_arr[:, 1], s=2, c='red')
-    plt.show()
-
-glitchy_msas = ['1pzs/1pzs_MSA.afa_filtered10000_filtered48', '3d7i/3d7i_MSA.afa_filtered10000_filtered21', '3ddv/3ddv_MSA.afa_filtered10000_filtered47', '3f52/3f52_MSA.afa_filtered10000_filtered22']
-#for glitchy_msa in glitchy_msas:
-# run_dca_internal(glitchy_msas[3 ])
-
-
-#print(produce_alignment_to_protein('CISD3_seed_truc', 'CISD3_seed_truc.fasta', '6avj', StructureInformation.fetch_pdb("6avj", 'pdb').get_non_missing_sequence('A'), 0))
-#print(produce_alignment_to_protein("1pzs_seed", "1pzs_seed.fasta", "1pzs_protein", struc_1pzs.non_missing_sequences['A'], struc_1pzs.get_shift_values('A', 'A')[0]))
-
-# struc_3d7i = StructureInformation.fetch_pdb("3d7i", 'pdb')
-# print(type(struc_3d7i))
-# print(list(sorted(struc_3d7i.get_contacts(False, 8, 'A', 'A', True))))
-# print(struc_3d7i.get_shift_values('A', 'A'))
-
-#struc_1pzs_cif = StructureInformation.fetch_pdb("1pzs", 'mmcif')
-#struc_1pzs_pdb = StructureInformation.fetch_pdb("1pzs", 'pdb')
-
-#print(struc_1pzs_cif.get_shift_values('A', 'A', False))     # Apply the shift iff the auth_res_ids is TRUE. The author is the one that's shifted, not my 1-indexed CIF
-#print(struc_1pzs_pdb.get_shift_values('A', 'A'))            # Apply the shift iff the auth_res_ids is 
-
-#plot_dca_internal('3ddv', 'mmcif', 'B', False, False, 'decarboxylase')
-
-#print(struc_1pzs_cif.get_non_missing_sequence('A'))
-#print(StructureInformation.fetch_pdb("6avj", 'mmcif').get_valid_chain_residues('A'))
-#print(produce_alignment_to_protein('SODS', '1pzs/1pzs_seed copy.fasta', '1pzs', "QSLTSTLTAPDGTKVATAKFEFANGYATVTIATTGVGKLTPGFHGLHIHQVGKCEPNSVAPTGGAPGNFLSAGGHYHVPGHTGTPASGDLASLQVRGDGSAMLVTTTDAFTMDDLLSGAKTAIIIHAGADNFANIPPERYVQVNGTPGPDETTLTTGDAGKRVACGVIGSG", 0))
-plot_dca_internal('3ddv', 'mmcif', 'B', False, False, 'decarboxylase')
