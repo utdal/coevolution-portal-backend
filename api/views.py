@@ -171,6 +171,7 @@ class MapResidues(APIView):
                 params.validated_data.get("chain1"),
                 params.validated_data.get("chain2"),
                 params.validated_data.get("auth_chain_id_supplied"),
+                params.validated_data.get("auth_residue_id_supplied"),
                 user=get_request_user(request),
                 session_key=get_request_session(request),
             )
@@ -197,6 +198,8 @@ class GenerateContacts(APIView):
                 params.validated_data.get("ca_only"),
                 params.validated_data.get("threshold"),
                 params.validated_data.get("is_cif"),
+                params.validated_data.get("auth_chain_id_supplied"),
+                params.validated_data.get("auth_residue_id_supplied"),
                 user=get_request_user(request),
                 session_key=get_request_session(request),
             )

@@ -114,7 +114,7 @@ def compute_dca_task(self, msa_id, theta=None, wait=True):
 
 
 @shared_task(base=APITaskBase, bind=True)
-def map_residues_task(self, dca_id, pdb_id, chain1, chain2, auth_chain_id_supplied, wait=True):
+def map_residues_task(self, dca_id, pdb_id, chain1, chain2, auth_chain_id_supplied, auth_residue_id_supplied, wait=True):
     prev_task = CeleryTaskMeta.objects.filter(id=dca_id)
     if prev_task.exists() and wait:
         self.set_progress(message="Waiting for MSA", percent=0)
@@ -135,21 +135,26 @@ def map_residues_task(self, dca_id, pdb_id, chain1, chain2, auth_chain_id_suppli
         structure_information = StructureInformation.fetch_pdb(pdb_id, 'mmcif')
         protein_sequence_1 = structure_information.get_non_missing_sequence(chain1, auth_chain_id_supplied)
         protein_sequence_2 = structure_information.get_non_missing_sequence(chain2, auth_chain_id_supplied)
+        valid_residues_1 = structure_information.get_valid_chain_residues(chain_id=chain1, auth_seq_id=auth_residue_id_supplied, auth_chain_id_supplied=auth_chain_id_supplied)
+        valid_residues_2 = structure_information.get_valid_chain_residues(chain_id=chain2, auth_seq_id=auth_residue_id_supplied, auth_chain_id_supplied=auth_chain_id_supplied)
     else:
         pdb_model = PDB.objects.get(id=pdb_id)
         
         if pdb_model.file_type == 'cif':
-            protein_sequence_1 = StructureInformation.read_mmCIF_file(pdb_model.pdb_file.path).get_non_missing_sequence(chain1, auth_chain_id_supplied)
-            protein_sequence_2 = StructureInformation.read_mmCIF_file(pdb_model.pdb_file.path).get_non_missing_sequence(chain2, auth_chain_id_supplied)
+            structure_information = StructureInformation.read_mmCIF_file(pdb_model.pdb_file.path)
+            protein_sequence_1 = structure_information.get_non_missing_sequence(chain1, auth_chain_id_supplied)
+            protein_sequence_2 = structure_information.get_non_missing_sequence(chain2, auth_chain_id_supplied)
+            valid_residues_1 = structure_information.get_valid_chain_residues(chain_id=chain1, auth_seq_id=auth_residue_id_supplied, auth_chain_id_supplied=auth_chain_id_supplied)
+            valid_residues_2 = structure_information.get_valid_chain_residues(chain_id=chain2, auth_seq_id=auth_residue_id_supplied, auth_chain_id_supplied=auth_chain_id_supplied)
         elif pdb_model.file_type == 'pdb':
-            protein_sequence_1 = StructureInformation.read_pdb_file(pdb_model.pdb_file.path).get_non_missing_sequence(chain1)
-            protein_sequence_2 = StructureInformation.read_pdb_file(pdb_model.pdb_file.path).get_non_missing_sequence(chain2)
-    # StructureInformation.fetch_pdb(pdb_id) # Called in get_mapped_residues
-    
-
+            structure_information = StructureInformation.read_pdb_file(pdb_model.pdb_file.path)
+            protein_sequence_1 = structure_information.get_non_missing_sequence(chain1)
+            protein_sequence_2 = structure_information.get_non_missing_sequence(chain2)
+            valid_residues_1 = structure_information.get_valid_chain_residues(chain_id=chain1)
+            valid_residues_2 = structure_information.get_valid_chain_residues(chain_id=chain2)
 
     mapped_di = get_mapped_residues(
-        dca.ranked_di, seed.name, seed.fasta.path, pdb_id, protein_sequence_1, protein_sequence_2
+        dca.ranked_di, seed.name, seed.fasta.path, pdb_id, protein_sequence_1, protein_sequence_2, valid_residues_1, valid_residues_2
     )
 
     MappedDi.objects.create(
@@ -164,25 +169,35 @@ def map_residues_task(self, dca_id, pdb_id, chain1, chain2, auth_chain_id_suppli
 
 @shared_task(base=APITaskBase, bind=True)
 def generate_contacts_task(
-    self, pdb_id: str, ca_only: bool = False, threshold: float = 8, is_cif: bool = True
+    self, pdb_id: str, ca_only: bool = False, threshold: float = 8, is_cif: bool = True, auth_chain_id_supplied:bool = False, auth_residue_id_supplied: bool = False
 ):
     self.set_progress(message="Generating contacts", percent=0)
 
     contacts_dict = {}
     if is_cif:
         structure_info = StructureInformation.fetch_pdb(pdb_id, 'mmcif')
-        for chain_id_1 in structure_info.unique_chains:
-            for chain_id_2 in structure_info.unique_chains:
-                contacts_name = f"{chain_id_1} [auth {structure_info.chain_auth_dict[chain_id_1]}], {chain_id_2} [auth {structure_info.chain_auth_dict[chain_id_2]}]"
+        
+        if auth_chain_id_supplied:
+            unique_chains = np.array(list(structure_info.auth_chain_dict.keys()))
+        else:
+            unique_chains = structure_info.unique_chains
+            
+        for chain_id_1 in unique_chains:
+            for chain_id_2 in unique_chains:
+                if auth_chain_id_supplied:
+                    contacts_name = f"{structure_info.auth_chain_dict[chain_id_1]} [auth {chain_id_1}], {structure_info.auth_chain_dict[chain_id_2]} [auth {chain_id_2}]"
+                else:
+                    contacts_name = f"{chain_id_1} [auth {structure_info.chain_auth_dict[chain_id_1]}], {chain_id_2} [auth {structure_info.chain_auth_dict[chain_id_2]}]"
                 contacts = structure_info.get_contacts(
-                    ca_only, threshold, chain_id_1, chain_id_2
+                    ca_only, threshold, chain_id_1, chain_id_2, auth_chain_id_supplied=auth_chain_id_supplied, auth_seq_id=auth_residue_id_supplied
                 )
                 contacts = [(int(a), int(b)) for a, b in contacts] # sets and np ints not JSON serializable
                 contacts_dict[contacts_name] = contacts
     else:
         structure_info = StructureInformation.fetch_pdb(pdb_id, 'pdb')
-        for chain_id_1 in structure_info.unique_chains:
-            for chain_id_2 in structure_info.unique_chains:
+        unique_chains = structure_info.unique_chains
+        for chain_id_1 in unique_chains:
+            for chain_id_2 in unique_chains:
                 contacts_name = f"{chain_id_1}, {chain_id_2}"
                 contacts = structure_info.get_contacts(
                     ca_only, threshold, chain_id_1, chain_id_2
