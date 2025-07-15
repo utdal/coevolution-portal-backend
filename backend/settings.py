@@ -23,12 +23,15 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-xidcj@2eyob(h67t3)#1adylk@ifsvl2ja+(ixk#$an1lxkpdr'
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY')
+
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['coevolutionary.org', 'www.coevolutionary.org', 'localhost', '127.0.0.1', 'backend']
 
 
 # Application definition
@@ -48,14 +51,14 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware'
 ]
 
 ROOT_URLCONF = 'backend.urls'
@@ -124,15 +127,18 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+STATIC_ROOT = BASE_DIR / 'static'
+
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-MEDIA_URL = 'files/'
-MEDIA_ROOT = BASE_DIR / 'media'
+
 
 # Celery settings
 CELERY_BROKER_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
@@ -150,7 +156,11 @@ CELERY_BEAT_SCHEDULE = {
 # CORS settings
 # CORS_ORIGIN_ALLOW_ALL = True
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",  # your frontend's URL
+    "http://localhost:3000",  
+    "https://www.coevolutionary.org",
+    "http://www.coevolutionary.org",
+    "https://coevolutionary.org",
+    "http://coevolutionary.org" # your frontend's URL
 ]
 CORS_ALLOW_CREDENTIALS = True
 
@@ -160,7 +170,7 @@ REST_FRAMEWORK = {
         'rest_framework.throttling.ScopedRateThrottle',
     ],
     'DEFAULT_THROTTLE_RATES': {
-        'long_task': '20/h'
+        'long_task': '6/m'
     },
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
@@ -176,6 +186,6 @@ SPECTACULAR_SETTINGS = {
 # Other settings
 DATA_EXPIRATION = timedelta(days=1)
 TASK_EXPIRATION = timedelta(days=1)
-DELETE_EXPIRED_DATA = False
+DELETE_EXPIRED_DATA = True
 HMM_DATABASE = BASE_DIR / 'databases/uniprot_sprot_trembl.fasta.gz'
-DATA_UPLOAD_MAX_MEMORY_SIZE = 2621440000  # 2500 MB
+#DATA_UPLOAD_MAX_MEMORY_SIZE = 2621440000  # 2500 MB
