@@ -20,6 +20,7 @@ db.sqlite3
 # Ignore local media/uploads if you have them
 media/
 uploads/
+static/
 
 # Node-related (if using npm/yarn in frontend)
 node_modules/
@@ -37,4 +38,7 @@ yarn-error.log
 .gitignore
 
 # Docker build should ignore the big DB file
-databases/uniprot_sprot_trembl.fasta.gz
+databases/*
+
+# Env file
+.env

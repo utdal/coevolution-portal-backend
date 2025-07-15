@@ -3,6 +3,7 @@ media/*
 databases/*
 data/*
 test_notebooks/*
+static/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -125,6 +126,9 @@ venv.bak/
 
 # mkdocs documentation
 /site
+
+#vscode
+.vscode
 
 # mypy
 .mypy_cache/
