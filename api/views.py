@@ -230,8 +230,8 @@ class CalculateHamiltonian(APIView):
             project_id = params.validated_data.get("project_id")
             if project_id:
                 try:
-                    lf = pd.read_csv(f"data/local_fields/{project_id}.csv", header=None)
-                    coup = pd.read_csv(f"data/couplings/{project_id}.csv", header=None)
+                    lf = pd.read_csv(f"databases/local_fields/{project_id}.csv", header=None)
+                    coup = pd.read_csv(f"databases/couplings/{project_id}.csv", header=None)
                 except Exception as e:
                     return Response({"Error": str(e)+ "Could not load project files"},status=status.HTTP_400_BAD_REQUEST)
 
