@@ -37,4 +37,5 @@ yarn-error.log
 .gitignore
 
 # Docker build should ignore the big DB file
-databases/uniprot_sprot_trembl.fasta.gz
+databases/
+media/

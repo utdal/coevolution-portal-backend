@@ -2,7 +2,7 @@ from django.conf import settings
 from django.utils import timezone
 from django.core.files import File
 from django.core.files.base import ContentFile
-from celery import shared_task
+from celery import shared_task, states
 import time
 from typing import Union, TextIO
 import tempfile
@@ -11,6 +11,8 @@ import numpy as np
 import json
 import os
 import io
+from .SEEC.seec import SEECnt 
+import uuid
 
 from .models import (
     APITaskMeta,
@@ -21,7 +23,8 @@ from .models import (
     SeedSequence,
     MappedDi,
     StructureContacts,
-    PDB
+    PDB,
+    EvolutionSimulation
 )
 from .taskutils import APITaskBase
 from .msautils import (
@@ -229,3 +232,43 @@ def cleanup_expired_data():
             print("Deleting...")
             old_tasks.delete()
             old_data.delete()
+
+@shared_task(bind=True)
+def run_evolution_simulation(self, msa_path, nt_sequence, temperature, steps):
+    try:
+        seec = SEECnt(msa=msa_path)
+        result = seec.resultsAPI(input_NTSeq=nt_sequence, num_steps=steps, selection_temp=temperature)
+
+        output_data = [
+            {
+                "aminoacids": result[0],
+                "steps": result[2],
+                "hamiltonians": result[1],
+            }
+        ]
+
+        with tempfile.NamedTemporaryFile(mode="w+", delete=False, suffix=".json") as out_json:
+            json.dump(output_data, out_json)
+            out_json_path = out_json.name
+
+        sim_instance = EvolutionSimulation.objects.filter(task_id=self.request.id).first()
+        if sim_instance:
+            with open(out_json_path, "rb") as f:
+                sim_instance.result_file.save(f"result_{sim_instance.id}.json", File(f), save=True)
+            sim_instance.completed = True
+            sim_instance.save()
+
+        return {"json_file": out_json_path}
+
+    except Exception as e:
+            import traceback
+            self.update_state(
+                state=states.FAILURE,
+                meta={
+                    'exc_type': type(e).__name__,
+                    'exc_message': str(e),
+                    'exc_args': e.args,
+                    'traceback': traceback.format_exc(),
+                }
+            )
+            raise

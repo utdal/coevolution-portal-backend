@@ -177,5 +177,5 @@ SPECTACULAR_SETTINGS = {
 DATA_EXPIRATION = timedelta(days=1)
 TASK_EXPIRATION = timedelta(days=1)
 DELETE_EXPIRED_DATA = False
-HMM_DATABASE = BASE_DIR / 'databases/uniprot_sprot_trembl.fasta.gz'
+HMM_DATABASE = BASE_DIR / 'databases/medium_6G_db.fasta.gz'
 DATA_UPLOAD_MAX_MEMORY_SIZE = 2621440000  # 2500 MB

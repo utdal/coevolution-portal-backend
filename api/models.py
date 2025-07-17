@@ -105,3 +105,27 @@ class StructureContacts(APIDataObject):
     ca_only = models.BooleanField()
     threshold = models.IntegerField()
     contacts = models.JSONField()
+    
+def msa_upload_path(instance, filename):
+    return f"evolution_simulations/{instance.id}/msa.fasta"
+
+def result_upload_path(instance, filename):
+    return f"evolution_simulations/{instance.id}/result.json"
+
+class EvolutionSimulation(models.Model):
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    msa_file = models.FileField(upload_to=msa_upload_path)
+    nt_sequence = models.TextField()
+    steps = models.IntegerField()
+    temperature = models.FloatField()
+
+    result_file = models.FileField(upload_to=result_upload_path, null=True, blank=True)
+
+    task_id = models.CharField(max_length=255, null=True, blank=True)
+    completed = models.BooleanField(default=False)
+    expires = models.DateTimeField(default=partial(get_future_date, settings.DATA_EXPIRATION))
+
+    def __str__(self):
+        return f"EvolutionSimulation {self.id}"
