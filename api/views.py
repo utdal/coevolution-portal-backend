@@ -324,6 +324,7 @@ class AlignSequences2HMM(APIView):
                 return Response({"aligned_sequences": results}, status=status.HTTP_200_OK)
         else:
             return Response("Error", status=status.HTTP_400_BAD_REQUEST)
+
 class EvolutionSimulationViewSet(viewsets.ModelViewSet):
     queryset = EvolutionSimulation.objects.all()
     serializer_class = EvolutionSimulationSerializer
@@ -350,8 +351,3 @@ class EvolutionSimulationViewSet(viewsets.ModelViewSet):
             {"task_id": task.id, "simulation_id": sim_obj.id},
             status=status.HTTP_202_ACCEPTED
         )
-    @action(detail=True, methods=["get"])
-    def results(self, request, pk=None):
-        sim_obj = get_object_or_404(EvolutionSimulation, pk=pk)
-        serializer = self.get_serializer(sim_obj)
-        return Response(serializer.data)
