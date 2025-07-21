@@ -3,6 +3,7 @@ from django.conf import settings
 from django.contrib.auth.models import User
 import celery
 from functools import partial
+import uuid
 
 from .modelutils import (
     NdarrayField,
@@ -113,6 +114,11 @@ def result_upload_path(instance, filename):
     return f"evolution_simulations/{instance.id}/result.json"
 
 class EvolutionSimulation(models.Model):
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False,
+    )
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -121,7 +127,7 @@ class EvolutionSimulation(models.Model):
     steps = models.IntegerField()
     temperature = models.FloatField()
 
-    result_file = models.FileField(upload_to=result_upload_path, null=True, blank=True)
+    result_file = models.FileField(upload_to=result_upload_path, blank=True)
 
     task_id = models.CharField(max_length=255, null=True, blank=True)
     completed = models.BooleanField(default=False)
