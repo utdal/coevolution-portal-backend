@@ -339,15 +339,21 @@ class EvolutionSimulationViewSet(viewsets.ModelViewSet):
 
         sim_obj = serializer.save(user=request.user if request.user.is_authenticated else None)
 
-        task = run_evolution_simulation.delay(
+        task = run_evolution_simulation.start(
             sim_obj.msa_file.path,
             sim_obj.nt_sequence,
             sim_obj.temperature,
-            sim_obj.steps
+            sim_obj.steps,
+            user=get_request_user(request),
+            session_key=get_request_session(request),
         )
+
         sim_obj.task_id = task.id
         sim_obj.save(update_fields=['task_id'])
+
+        resp = TaskSerializer(task)
+
         return Response(
-            {"task_id": task.id, "simulation_id": sim_obj.id},
+            {**resp.data, "simulation_id": sim_obj.id},
             status=status.HTTP_202_ACCEPTED
         )

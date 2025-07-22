@@ -233,7 +233,7 @@ def cleanup_expired_data():
             old_tasks.delete()
             old_data.delete()
 
-@shared_task(bind=True)
+@shared_task(base=APITaskBase, bind=True)
 def run_evolution_simulation(self, msa_path, nt_sequence, temperature, steps):
     try:
         seec = SEECnt(msa=msa_path)
