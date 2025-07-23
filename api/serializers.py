@@ -160,4 +160,4 @@ class EvolutionSimulationSerializer(serializers.ModelSerializer):
     class Meta:
         model = EvolutionSimulation
         fields = '__all__'
-        read_only_fields = ['id', 'created_at', 'result_file', 'task_id', 'completed', 'expires']
+        read_only_fields = ['id', 'created_at', 'result_file', 'task_id', 'completed', 'expires',  'error_message', 'percent']

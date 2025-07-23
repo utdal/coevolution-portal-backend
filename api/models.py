@@ -114,11 +114,7 @@ def result_upload_path(instance, filename):
     return f"evolution_simulations/{instance.id}/result.json"
 
 class EvolutionSimulation(models.Model):
-    id = models.UUIDField(
-        primary_key=True,
-        default=uuid.uuid4,
-        editable=False,
-    )
+    id = models.UUIDField(primary_key=True, default=get_random_uuid)
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -127,11 +123,15 @@ class EvolutionSimulation(models.Model):
     steps = models.IntegerField()
     temperature = models.FloatField()
 
-    result_file = models.FileField(upload_to=result_upload_path, blank=True)
-
+    result_file = models.FileField(
+        upload_to="simulation-results/",
+        null=True,
+        blank=True,
+    )
+    percent = models.FloatField(default=0)
     task_id = models.CharField(max_length=255, null=True, blank=True)
     completed = models.BooleanField(default=False)
     expires = models.DateTimeField(default=partial(get_future_date, settings.DATA_EXPIRATION))
-
+    error_message = models.CharField(max_length=255, null=True, blank=True)
     def __str__(self):
         return f"EvolutionSimulation {self.id}"

@@ -5,6 +5,7 @@ from Bio import SeqIO
 from io import StringIO
 from dca.dca_functions import return_Hamiltonian, create_numerical_MSA
 from numba import jit
+import os
 
 
 @jit(nopython=True)
@@ -40,7 +41,10 @@ class SEECnt:
                 f"AA Length: {len(numeric_aa)} does not match NT length: {len(numeric_nt)}"
             )
         elif len(numeric_aa) != self.dca_params.couplings.shape[0]:
-            print('error')
+            raise ValueError(
+                f"Input AA length ({len(numeric_aa)}) does not match "
+                f"DCA model length ({self.dca_params.couplings.shape[0]})."
+            )
 
     def mutationStep(self, aa_seq: np.array, nt_seq: np.array, temp: float) -> list:
         # choose uniformly from all non-gap positions in aa_seq
@@ -157,7 +161,8 @@ class SEECnt:
                               input_NTSeq = input_NTSeq,
                               num_steps = num_steps,
                               selection_temp = selection_temp)
-        output_file_aa = "stable_aa_trajectory.fasta"
+        output_file_aa = os.path.join(os.path.dirname(__file__),
+                                      "stable_aa_trajectory.fasta")
 
         evolved_sequences=self.writeResultFasta(aa_trajectory = results[0],
                             nt_trajectory = results[1],

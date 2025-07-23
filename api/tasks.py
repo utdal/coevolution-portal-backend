@@ -34,6 +34,7 @@ from .msautils import (
     get_msa_stats,
 )
 from dcatoolkit import StructureInformation
+from rest_framework.exceptions import ValidationError
 
 
 @shared_task(base=APITaskBase, bind=True)
@@ -236,9 +237,21 @@ def cleanup_expired_data():
 @shared_task(base=APITaskBase, bind=True)
 def run_evolution_simulation(self, msa_path, nt_sequence, temperature, steps):
     try:
-        seec = SEECnt(msa=msa_path)
-        result = seec.resultsAPI(input_NTSeq=nt_sequence, num_steps=steps, selection_temp=temperature)
+        sim_instance = EvolutionSimulation.objects.filter(task_id=self.request.id).first()
 
+        seec = SEECnt(msa=msa_path)
+        self.set_progress(message="Running SEEC", percent=30)
+        sim_instance.percent = 30
+        print(f"Setting percent to {sim_instance.percent}")
+        sim_instance.save(update_fields=["percent"])
+
+        result = seec.resultsAPI(input_NTSeq=nt_sequence,
+                                  num_steps=steps,
+                                  selection_temp=temperature)
+
+        self.set_progress(message="Saving results", percent=90)
+        sim_instance.percent = 90
+        sim_instance.save(update_fields=["percent"])
         output_data = [
             {
                 "aminoacids": result[0],
@@ -251,24 +264,31 @@ def run_evolution_simulation(self, msa_path, nt_sequence, temperature, steps):
             json.dump(output_data, out_json)
             out_json_path = out_json.name
 
-        sim_instance = EvolutionSimulation.objects.filter(task_id=self.request.id).first()
         if sim_instance:
             with open(out_json_path, "rb") as f:
-                sim_instance.result_file.save(f"result_{sim_instance.id}.json", File(f), save=True)
+                sim_instance.result_file.save(f"result_{sim_instance.id}.json",
+                                               File(f), save=True)
             sim_instance.completed = True
+            sim_instance.percent = 100
             sim_instance.save()
-
+        self.set_progress(message="", percent=100)
         return {"json_file": out_json_path}
 
     except Exception as e:
-            import traceback
-            self.update_state(
-                state=states.FAILURE,
-                meta={
-                    'exc_type': type(e).__name__,
-                    'exc_message': str(e),
-                    'exc_args': e.args,
-                    'traceback': traceback.format_exc(),
-                }
-            )
-            raise
+        import traceback
+
+        self.update_state(
+            state=states.FAILURE,
+            meta={
+                "exc_type": type(e).__name__,
+                "exc_message": str(e),
+                "traceback": traceback.format_exc(),
+            },
+        )
+
+        if sim_instance:
+            sim_instance.error_message = str(e)
+            sim_instance.completed = False 
+            sim_instance.save(update_fields=["error_message", "completed"])
+
+        raise
