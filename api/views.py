@@ -331,13 +331,15 @@ class EvolutionSimulationViewSet(viewsets.ModelViewSet):
     parser_classes = [MultiPartParser, FormParser]
 
 
+
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         sim_obj = serializer.save(user=request.user if request.user.is_authenticated else None)
+
         task = run_evolution_simulation.start(
-            sim_obj.msa_file.path,
+            sim_obj.msa_id,
             sim_obj.nt_sequence,
             sim_obj.temperature,
             sim_obj.steps,

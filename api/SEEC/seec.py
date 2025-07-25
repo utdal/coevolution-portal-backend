@@ -156,12 +156,14 @@ class SEECnt:
                 input_NTSeq: str,
                 num_steps: int,
                 selection_temp: float = 1.0,):
+
         input_AASeq = self.genetics.ntToAA(input_NTSeq)
         results = self.evolveSequence(input_AASeq = input_AASeq,
                               input_NTSeq = input_NTSeq,
                               num_steps = num_steps,
                               selection_temp = selection_temp)
         output_file_aa = os.path.join(os.path.dirname(__file__),
+
                                       "stable_aa_trajectory.fasta")
 
         evolved_sequences=self.writeResultFasta(aa_trajectory = results[0],

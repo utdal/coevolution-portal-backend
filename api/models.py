@@ -118,7 +118,7 @@ class EvolutionSimulation(models.Model):
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
-    msa_file = models.FileField(upload_to=msa_upload_path)
+    msa_id = models.UUIDField()
     nt_sequence = models.TextField()
     steps = models.IntegerField()
     temperature = models.FloatField()
