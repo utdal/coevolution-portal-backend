@@ -3,6 +3,8 @@ media/*
 databases/*
 data/*
 test_notebooks/*
+static/*
+.vscode/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

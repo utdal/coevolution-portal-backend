@@ -3,6 +3,7 @@ from django.conf import settings
 from django.contrib.auth.models import User
 import celery
 from functools import partial
+import uuid
 
 from .modelutils import (
     NdarrayField,
@@ -105,3 +106,32 @@ class StructureContacts(APIDataObject):
     ca_only = models.BooleanField()
     threshold = models.IntegerField()
     contacts = models.JSONField()
+    
+def msa_upload_path(instance, filename):
+    return f"evolution_simulations/{instance.id}/msa.fasta"
+
+def result_upload_path(instance, filename):
+    return f"evolution_simulations/{instance.id}/result.json"
+
+class EvolutionSimulation(models.Model):
+    id = models.UUIDField(primary_key=True, default=get_random_uuid)
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    msa_id = models.UUIDField()
+    nt_sequence = models.TextField()
+    steps = models.IntegerField()
+    temperature = models.FloatField()
+
+    result_file = models.FileField(
+        upload_to="simulation-results/",
+        null=True,
+        blank=True,
+    )
+    percent = models.FloatField(default=0)
+    task_id = models.CharField(max_length=255, null=True, blank=True)
+    completed = models.BooleanField(default=False)
+    expires = models.DateTimeField(default=partial(get_future_date, settings.DATA_EXPIRATION))
+    error_message = models.CharField(max_length=255, null=True, blank=True)
+    def __str__(self):
+        return f"EvolutionSimulation {self.id}"

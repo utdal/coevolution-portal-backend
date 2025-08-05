@@ -9,6 +9,7 @@ from .models import (
     MultipleSequenceAlignment,
     DirectCouplingAnalysis,
     StructureContacts,
+    EvolutionSimulation
 )
 
 
@@ -155,3 +156,8 @@ class Align2HMMSerializer(serializers.Serializer):
     fasta_input = serializers.FileField(required=False, allow_null=True)  # file must be fasta format
     hmm_input =  serializers.FileField(required=True)  # file must be .hmm format
     aligned_sequences = serializers.JSONField(required=False, allow_null=True)  # headers are keys and sequences are values
+class EvolutionSimulationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EvolutionSimulation
+        fields = '__all__'
+        read_only_fields = ['id', 'created_at', 'result_file', 'task_id', 'completed', 'expires',  'error_message', 'percent']

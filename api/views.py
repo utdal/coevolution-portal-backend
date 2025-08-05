@@ -5,13 +5,16 @@ from django.conf import settings
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, parsers, mixins, viewsets
+from rest_framework.decorators import action
+from rest_framework.parsers import MultiPartParser, FormParser
+import tempfile
 from drf_spectacular.utils import extend_schema
 from .ProSSpeC.calculate_Hamiltonian import calc_Hamiltonian
 import pandas as pd
 from io import BytesIO
 import json
-import uuid
-
+from django.shortcuts import get_object_or_404
+from django.core.files import File
 from .serializers import (
     GenerateContactsSerializer,
     StructureContactsSerializer,
@@ -25,7 +28,8 @@ from .serializers import (
     MapResiduesSerializer,
     MappedDiSerializer,
     CalculateHamiltonianSerializer,
-    Align2HMMSerializer
+    Align2HMMSerializer,
+    EvolutionSimulationSerializer,
 )
 from .models import (
     APITaskMeta,
@@ -35,12 +39,14 @@ from .models import (
     MultipleSequenceAlignment,
     DirectCouplingAnalysis,
     StructureContacts,
+    EvolutionSimulation,
 )
 from .tasks import (
     generate_contacts_task,
     generate_msa_task,
     compute_dca_task,
     map_residues_task,
+    run_evolution_simulation,
 )
 from .viewutils import (
     # UsersReadOnlyModelViewSet,
@@ -318,3 +324,35 @@ class AlignSequences2HMM(APIView):
                 return Response({"aligned_sequences": results}, status=status.HTTP_200_OK)
         else:
             return Response("Error", status=status.HTTP_400_BAD_REQUEST)
+
+class EvolutionSimulationViewSet(viewsets.ModelViewSet):
+    queryset = EvolutionSimulation.objects.all()
+    serializer_class = EvolutionSimulationSerializer
+    parser_classes = [MultiPartParser, FormParser]
+
+
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        sim_obj = serializer.save(user=request.user if request.user.is_authenticated else None)
+
+        task = run_evolution_simulation.start(
+            sim_obj.msa_id,
+            sim_obj.nt_sequence,
+            sim_obj.temperature,
+            sim_obj.steps,
+            user=get_request_user(request),
+            session_key=get_request_session(request),
+        )
+        print(task)
+        sim_obj.task_id = task.id
+        sim_obj.save(update_fields=['task_id'])
+
+        resp = TaskSerializer(task)
+
+        return Response(
+            {**resp.data, "simulation_id": sim_obj.id},
+            status=status.HTTP_202_ACCEPTED
+        )

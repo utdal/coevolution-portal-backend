@@ -2,7 +2,7 @@ from django.conf import settings
 from django.utils import timezone
 from django.core.files import File
 from django.core.files.base import ContentFile
-from celery import shared_task
+from celery import shared_task, states
 import time
 from typing import Union, TextIO
 import tempfile
@@ -11,6 +11,8 @@ import numpy as np
 import json
 import os
 import io
+from .SEEC.seec import SEECnt 
+import uuid
 
 from .models import (
     APITaskMeta,
@@ -21,7 +23,8 @@ from .models import (
     SeedSequence,
     MappedDi,
     StructureContacts,
-    PDB
+    PDB,
+    EvolutionSimulation
 )
 from .taskutils import APITaskBase
 from .msautils import (
@@ -31,6 +34,7 @@ from .msautils import (
     get_msa_stats,
 )
 from dcatoolkit import StructureInformation
+from rest_framework.exceptions import ValidationError
 
 
 @shared_task(base=APITaskBase, bind=True)
@@ -229,3 +233,102 @@ def cleanup_expired_data():
             print("Deleting...")
             old_tasks.delete()
             old_data.delete()
+
+@shared_task(base=APITaskBase, bind=True)
+def run_evolution_simulation(self, msa_id, nt_sequence, temperature, steps):
+    """Run SEEC simulation.
+
+    We accept ``msa_id`` instead of a file path so that the evolution
+    simulation can be started immediately after the *generate-msa* task is
+    queued.  The worker will poll the database until the corresponding
+    ``MultipleSequenceAlignment`` row (created by ``generate_msa_task``)
+    appears and then proceed.
+    """
+
+    sim_instance = None
+    try:
+        sim_instance = EvolutionSimulation.objects.filter(task_id=self.request.id).first()
+
+        # ------------------------------------------------------------------
+        # Wait until the MSA row exists (generate_msa_task creates it).
+        # ------------------------------------------------------------------
+        poll_attempts = 0
+        msa_obj = None
+        while poll_attempts < 60:  # wait up to 5 min (60 × 5 s)
+            try:
+                msa_obj = MultipleSequenceAlignment.objects.get(id=msa_id)
+                break
+            except MultipleSequenceAlignment.DoesNotExist:
+                time.sleep(5)
+                poll_attempts += 1
+
+        if msa_obj is None:
+            raise ValidationError("MSA not found after waiting for generation task to finish")
+
+        msa_path = msa_obj.fasta.path
+
+        # ------------------------------------------------------------------
+        # Run SEEC simulation
+        # ------------------------------------------------------------------
+        seec = SEECnt(msa=msa_path)
+        self.set_progress(message="Running SEEC", percent=30)
+        if sim_instance:
+            sim_instance.percent = 30
+            sim_instance.save(update_fields=["percent"])
+
+        result = seec.resultsAPI(
+            input_NTSeq=nt_sequence,
+            num_steps=steps,
+            selection_temp=temperature,
+        )
+
+        # ------------------------------------------------------------------
+        # Save results
+        # ------------------------------------------------------------------
+        self.set_progress(message="Saving results", percent=90)
+        if sim_instance:
+            sim_instance.percent = 90
+            sim_instance.save(update_fields=["percent"])
+
+        output_data = [
+            {
+                "aminoacids": result[0],
+                "steps": result[2],
+                "hamiltonians": result[1],
+            }
+        ]
+
+        with tempfile.NamedTemporaryFile(mode="w+", delete=False, suffix=".json") as out_json:
+            json.dump(output_data, out_json)
+            out_json_path = out_json.name
+
+        if sim_instance:
+            with open(out_json_path, "rb") as f:
+                sim_instance.result_file.save(
+                    f"result_{sim_instance.id}.json", File(f), save=True
+                )
+            sim_instance.completed = True
+            sim_instance.percent = 100
+            sim_instance.save()
+
+        self.set_progress(message="", percent=100)
+        return {"json_file": out_json_path}
+
+    except Exception as e:
+        import traceback
+
+        self.update_state(
+            state=states.FAILURE,
+            meta={
+                "exc_type": type(e).__name__,
+                "exc_message": str(e),
+                "traceback": traceback.format_exc(),
+            },
+        )
+
+        if sim_instance:
+            sim_instance.error_message = str(e)
+            sim_instance.completed = False
+            sim_instance.save(update_fields=["error_message", "completed"])
+
+        raise

@@ -19,7 +19,8 @@ from .views import (
     MapResidues,
     GenerateContacts,
     CalculateHamiltonian,
-    AlignSequences2HMM
+    AlignSequences2HMM,
+    EvolutionSimulationViewSet
 )
 
 urlpatterns = [
@@ -39,7 +40,7 @@ urlpatterns = [
     path("map-residues/", MapResidues.as_view()),
     path("generate-contacts/", GenerateContacts.as_view()),
     path("hamiltonian/", CalculateHamiltonian.as_view()),
-    path("align2hmm/", AlignSequences2HMM.as_view())
+    path("align2hmm/", AlignSequences2HMM.as_view()),
 ]
 
 router = DefaultRouter()
@@ -50,5 +51,6 @@ router.register("msas", MSAViewSet, basename='msa')
 router.register("dcas", DCAViewSet, basename='dca')
 router.register("mapped-dis", MappedDiViewSet, basename='mapped-di')
 router.register("structure-contacts", StructureContactsViewSet, basename='structure-contact')
+router.register("evolution-simulations", EvolutionSimulationViewSet, basename='evolutionsimulation')
 
 urlpatterns += router.urls
