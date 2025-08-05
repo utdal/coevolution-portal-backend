@@ -39,3 +39,4 @@ yarn-error.log
 # Docker build should ignore the big DB file
 databases/
 media/
+.env
