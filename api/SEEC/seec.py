@@ -5,7 +5,6 @@ from Bio import SeqIO
 from io import StringIO
 from dca.dca_functions import return_Hamiltonian, create_numerical_MSA
 from numba import jit
-import os
 
 
 @jit(nopython=True)
@@ -152,24 +151,41 @@ class SEECnt:
             ),
             headers,
         )
+
     def resultsAPI(self,
                 input_NTSeq: str,
                 num_steps: int,
                 selection_temp: float = 1.0,):
 
         input_AASeq = self.genetics.ntToAA(input_NTSeq)
-        results = self.evolveSequence(input_AASeq = input_AASeq,
-                              input_NTSeq = input_NTSeq,
-                              num_steps = num_steps,
-                              selection_temp = selection_temp)
-        output_file_aa = os.path.join(os.path.dirname(__file__),
+        results = self.evolveSequence(
+            input_AASeq=input_AASeq,
+            input_NTSeq=input_NTSeq,
+            num_steps=num_steps,
+            selection_temp=selection_temp,
+        )
 
-                                      "stable_aa_trajectory.fasta")
+        aa_sequences = results[0]  # shape: (num_steps+1, seq_len), already numerical
 
-        evolved_sequences=self.writeResultFasta(aa_trajectory = results[0],
-                            nt_trajectory = results[1],
-                            aa_filename = output_file_aa)
-        hamiltonians, _ = self.compute_Hamiltonian(sequences = output_file_aa)
+        # Decode numerical aa_sequences back to strings in-memory (no file needed)
+        revaa = {v: k for k, v in self.genetics.aa_code.items()}
+        aa_seqs = ["".join([revaa[aa] for aa in seq]) for seq in aa_sequences]
 
-        return [evolved_sequences[0], hamiltonians.tolist(), list(range(0, len(hamiltonians)))]
+        # Compute Hamiltonians directly from the numerical array — no temp file roundtrip
+        hamiltonians = return_Hamiltonian(
+            aa_sequences,
+            self.dca_params.couplings,
+            self.dca_params.localfields,
+        )
 
+        hamiltonian_list = (
+            hamiltonians.tolist()
+            if hasattr(hamiltonians, "tolist")
+            else list(hamiltonians)
+        )
+
+        return [
+            aa_seqs,
+            hamiltonian_list,
+            list(range(len(hamiltonian_list))),
+        ]

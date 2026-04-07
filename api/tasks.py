@@ -250,26 +250,37 @@ def run_evolution_simulation(self, msa_id, nt_sequence, temperature, steps):
         sim_instance = EvolutionSimulation.objects.filter(task_id=self.request.id).first()
 
         # ------------------------------------------------------------------
-        # Wait until the MSA row exists (generate_msa_task creates it).
+        # Wait for the MSA task to finish (if a task exists) before proceeding.
+        # We allow up to 30 minutes, checking every 5 seconds.  During the wait,
+        # propagate task failures immediately so the caller gets a helpful error.
         # ------------------------------------------------------------------
-        poll_attempts = 0
-        msa_obj = None
-        while poll_attempts < 60:  # wait up to 5 min (60 × 5 s)
-            try:
-                msa_obj = MultipleSequenceAlignment.objects.get(id=msa_id)
-                break
-            except MultipleSequenceAlignment.DoesNotExist:
-                time.sleep(5)
-                poll_attempts += 1
+        poll_interval = 5
+        max_wait_seconds = 30 * 60  # 30 minutes
+        waited_seconds = 0
+
+        task_meta = CeleryTaskMeta.objects.filter(id=msa_id).first()
+        msa_obj = MultipleSequenceAlignment.objects.filter(id=msa_id).first()
+        while msa_obj is None and waited_seconds <= max_wait_seconds:
+            if task_meta:
+                task_meta.refresh_from_db()
+                if task_meta.state == states.FAILURE:
+                    message = task_meta.message or "MSA generation task failed"
+                    raise ValidationError(message)
+            else:
+                # No Celery task exists for this msa_id and the record is absent.
+                raise ValidationError("No saved MSA exists for the supplied id.")
+
+            time.sleep(poll_interval)
+            waited_seconds += poll_interval
+            msa_obj = MultipleSequenceAlignment.objects.filter(id=msa_id).first()
 
         if msa_obj is None:
-            raise ValidationError("MSA not found after waiting for generation task to finish")
+            raise ValidationError(
+                "MSA generation is still running. Please try again once the task completes."
+            )
 
         msa_path = msa_obj.fasta.path
 
-        # ------------------------------------------------------------------
-        # Run SEEC simulation
-        # ------------------------------------------------------------------
         seec = SEECnt(msa=msa_path)
         self.set_progress(message="Running SEEC", percent=30)
         if sim_instance:
@@ -282,9 +293,6 @@ def run_evolution_simulation(self, msa_id, nt_sequence, temperature, steps):
             selection_temp=temperature,
         )
 
-        # ------------------------------------------------------------------
-        # Save results
-        # ------------------------------------------------------------------
         self.set_progress(message="Saving results", percent=90)
         if sim_instance:
             sim_instance.percent = 90

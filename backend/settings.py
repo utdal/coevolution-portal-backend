@@ -22,13 +22,14 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
+import os
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-xidcj@2eyob(h67t3)#1adylk@ifsvl2ja+(ixk#$an1lxkpdr'
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-xidcj@2eyob(h67t3)#1adylk@ifsvl2ja+(ixk#$an1lxkpdr')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DJANGO_DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['coevolutionary.org', 'www.coevolutionary.org', 'localhost', '127.0.0.1', 'backend']
 
 
 # Application definition
@@ -150,7 +151,11 @@ CELERY_BEAT_SCHEDULE = {
 # CORS settings
 # CORS_ORIGIN_ALLOW_ALL = True
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",  # your frontend's URL
+    "http://localhost:3000",  
+    "https://www.coevolutionary.org",
+    "http://www.coevolutionary.org",
+    "https://coevolutionary.org",
+    "http://coevolutionary.org"
 ]
 CORS_ALLOW_CREDENTIALS = True
 
