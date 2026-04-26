@@ -77,12 +77,16 @@ def generate_msa_task(self, seed, msa_name=None, E=None, perc_max_gaps=None):
     self.set_progress(message="", percent=100)
 
 
-@shared_task(base=APITaskBase, bind=True)
+@shared_task(base=APITaskBase, bind=True, max_retries=None)
 def compute_dca_task(self, msa_id, theta=None, wait=True):
     prev_task = CeleryTaskMeta.objects.filter(id=msa_id)
     if prev_task.exists() and wait:
-        self.set_progress(message="Waiting for MSA", percent=0)
-        prev_task.first().wait_for_completion()
+        pt = prev_task.first()
+        if not pt.successful:
+            if pt.state == "FAILURE":
+                raise Exception("Previous task failed")
+            self.set_progress(message="Waiting for MSA", percent=0)
+            raise self.retry(countdown=60)
 
     msa = MultipleSequenceAlignment.objects.get(id=msa_id)
 
@@ -117,12 +121,16 @@ def compute_dca_task(self, msa_id, theta=None, wait=True):
     self.set_progress(message="", percent=100)
 
 
-@shared_task(base=APITaskBase, bind=True)
+@shared_task(base=APITaskBase, bind=True, max_retries=None)
 def map_residues_task(self, dca_id, pdb_id, chain1, chain2, auth_chain_id_supplied, auth_residue_id_supplied, wait=True):
     prev_task = CeleryTaskMeta.objects.filter(id=dca_id)
     if prev_task.exists() and wait:
-        self.set_progress(message="Waiting for MSA", percent=0)
-        prev_task.first().wait_for_completion()
+        pt = prev_task.first()
+        if not pt.successful:
+            if pt.state == "FAILURE":
+                raise Exception("Previous task failed")
+            self.set_progress(message="Waiting for DCA", percent=0)
+            raise self.retry(countdown=60)
 
     dca = DirectCouplingAnalysis.objects.get(id=dca_id)
     # assert dca.msa and dca.msa.seed, "The DCA must have a seed"

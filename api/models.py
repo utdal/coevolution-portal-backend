@@ -23,11 +23,7 @@ class CeleryTaskMeta(models.Model):
     percent = models.FloatField(default=0)
     successful = models.BooleanField(default=False)
 
-    def wait_for_completion(self):
-        if self.successful:
-            return
-        result = celery.current_app.AsyncResult(str(self.id))
-        result.get(disable_sync_subtasks=False)  # Not recommended! Not sure a better way...
+
 
 
 class APITaskMeta(CeleryTaskMeta):

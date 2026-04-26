@@ -128,6 +128,7 @@ class GenerateMsa(APIView):
                 params.validated_data.get("perc_max_gaps"),
                 user=get_request_user(request),
                 session_key=get_request_session(request),
+                priority=0,
             )
 
             resp = TaskSerializer(task)
@@ -152,6 +153,7 @@ class ComputeDca(APIView):
                 params.validated_data.get("theta"),
                 user=get_request_user(request),
                 session_key=get_request_session(request),
+                priority=5,
             )
 
             resp = TaskSerializer(task)
@@ -180,6 +182,7 @@ class MapResidues(APIView):
                 params.validated_data.get("auth_residue_id_supplied"),
                 user=get_request_user(request),
                 session_key=get_request_session(request),
+                priority=7,
             )
 
             resp = TaskSerializer(task)
@@ -208,6 +211,7 @@ class GenerateContacts(APIView):
                 params.validated_data.get("auth_residue_id_supplied"),
                 user=get_request_user(request),
                 session_key=get_request_session(request),
+                priority=9,
             )
 
             resp = TaskSerializer(task)
@@ -345,6 +349,7 @@ class EvolutionSimulationViewSet(viewsets.ModelViewSet):
             sim_obj.steps,
             user=get_request_user(request),
             session_key=get_request_session(request),
+            priority=5,
         )
         print(task)
         sim_obj.task_id = task.id

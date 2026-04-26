@@ -13,7 +13,7 @@ class APITaskBase(celery.Task):
     # * Tasks should take basic types or model keys as input
     # * Tasks should save results in database and return nothing
 
-    def start(self, *args, user=None, session_key=None, **kwargs):
+    def start(self, *args, user=None, session_key=None, priority=None, **kwargs):
         self._user_id = None if user is None else user.id
         self._task_id = str(uuid.uuid4())
 
@@ -25,7 +25,11 @@ class APITaskBase(celery.Task):
             state="PENDING"
         )
 
-        self.apply_async(args, kwargs, task_id=self._task_id)
+        apply_kwargs = {'task_id': self._task_id}
+        if priority is not None:
+            apply_kwargs['priority'] = priority
+
+        self.apply_async(args, kwargs, **apply_kwargs)
 
         return task
 
@@ -77,6 +81,9 @@ class APITaskBase(celery.Task):
         if result.state == "FAILURE":
             task.time_ended = timezone.now()
             task.successful = False
+
+        if result.state == "RETRY":
+            task.state = "PENDING"
 
         task.save()
 

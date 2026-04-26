@@ -141,6 +141,10 @@ CELERY_BROKER_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
 CELERY_RESULT_BACKEND = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 CELERY_TASK_TRACK_STARTED = True
+CELERY_BROKER_TRANSPORT_OPTIONS = {
+    'priority_steps': list(range(10)),
+    'queue_order_strategy': 'priority',
+}
 
 CELERY_BEAT_SCHEDULE = {
     "sample_task": {
