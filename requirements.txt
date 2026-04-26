@@ -4,9 +4,12 @@ redis
 djangorestframework
 django-cleanup
 numpy
+biopython
+numba
+scipy
 pyhmmer
-git+https://github.com/utdal/py-mfdca.git@master#egg=dca
 drf-spectacular
+git+https://github.com/utdal/py-mfdca.git
 django-cors-headers
-dcatoolkit
+git+https://github.com/RaheelSyedAhmed/dcatoolkit.git
 gunicorn

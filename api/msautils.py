@@ -3,6 +3,7 @@ from numpy import percentile
 import numpy.typing as npt
 import io
 import re
+import gzip
 from dcatoolkit import DirectInformationData, ResidueAlignment, StructureInformation
 from dcatoolkit import MSATools
 from pyhmmer.plan7 import Background, HMM, Profile, OptimizedProfile, HMMFile, Pipeline, Builder
@@ -73,8 +74,14 @@ def hmmsearch_from_seed(seed_sequence_filepath: str, seed_name: str, E: Optional
     else:
         pipeline = Pipeline(alphabet=aa_alphabet, background=background)
     hits = None
-    with SequenceFile(database_path, digital=True, alphabet=aa_alphabet) as seq_file:
-        hits = pipeline.search_hmm(hmm, seq_file)
+    db_path = str(database_path)
+    if db_path.endswith('.gz'):
+        db_file = gzip.open(db_path, 'rb')
+    else:
+        db_file = open(db_path, 'rb')
+    with db_file:
+        with SequenceFile(db_file, digital=True, alphabet=aa_alphabet, format="fasta") as seq_file:
+            hits = pipeline.search_hmm(hmm, seq_file)
     if hits:
         produced_msa: MSA = hits.to_msa(alphabet=aa_alphabet, digitize=False)
         if isinstance(produced_msa, TextMSA):
@@ -112,8 +119,11 @@ def produce_alignment_to_protein(seed_name: str, seed_sequence_filepath: str, pr
     # Queries refers to the protein sequence, which yields the target of the alignment.
     # Profiles refers to the domain's profile HMM generated from the domain / full protein's seed sequence. The same HMM used to generate an MSA.
     best_alignment = hits[0][0].best_domain.alignment
-    
-    return ResidueAlignment(best_alignment.hmm_name.decode(), best_alignment.target_name.decode(), best_alignment.hmm_from, best_alignment.target_from, best_alignment.hmm_sequence, best_alignment.target_sequence, valid_residues=valid_residues)
+
+    def _to_str(value):
+        return value.decode() if isinstance(value, bytes) else value
+
+    return ResidueAlignment(_to_str(best_alignment.hmm_name), _to_str(best_alignment.target_name), best_alignment.hmm_from, best_alignment.target_from, best_alignment.hmm_sequence, best_alignment.target_sequence, valid_residues=valid_residues)
 
 
 def align_sequences_with_hmm(sequences: Union[list[str], str, io.IOBase], 
