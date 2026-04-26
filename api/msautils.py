@@ -81,7 +81,7 @@ def hmmsearch_from_seed(seed_sequence_filepath: str, seed_name: str, E: Optional
         db_file = open(db_path, 'rb')
     with db_file:
         with SequenceFile(db_file, digital=True, alphabet=aa_alphabet, format="fasta") as seq_file:
-            hits = pipeline.search_hmm(hmm, seq_file)
+            hits = pipeline.search_hmm(hmm, (seq for seq in seq_file))
     if hits:
         produced_msa: MSA = hits.to_msa(alphabet=aa_alphabet, digitize=False)
         if isinstance(produced_msa, TextMSA):
