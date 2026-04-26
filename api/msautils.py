@@ -3,7 +3,6 @@ from numpy import percentile
 import numpy.typing as npt
 import io
 import re
-import gzip
 from dcatoolkit import DirectInformationData, ResidueAlignment, StructureInformation
 from dcatoolkit import MSATools
 from pyhmmer.plan7 import Background, HMM, Profile, OptimizedProfile, HMMFile, Pipeline, Builder
@@ -74,14 +73,8 @@ def hmmsearch_from_seed(seed_sequence_filepath: str, seed_name: str, E: Optional
     else:
         pipeline = Pipeline(alphabet=aa_alphabet, background=background)
     hits = None
-    db_path = str(database_path)
-    if db_path.endswith('.gz'):
-        db_file = gzip.open(db_path, 'rb')
-    else:
-        db_file = open(db_path, 'rb')
-    with db_file:
-        with SequenceFile(db_file, digital=True, alphabet=aa_alphabet, format="fasta") as seq_file:
-            hits = pipeline.search_hmm(hmm, (seq for seq in seq_file))
+    with SequenceFile(database_path, digital=True, alphabet=aa_alphabet) as seq_file:
+        hits = pipeline.search_hmm(hmm, seq_file)
     if hits:
         produced_msa: MSA = hits.to_msa(alphabet=aa_alphabet, digitize=False)
         if isinstance(produced_msa, TextMSA):

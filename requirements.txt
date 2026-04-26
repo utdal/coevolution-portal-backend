@@ -7,7 +7,7 @@ numpy
 biopython
 numba
 scipy
-pyhmmer
+pyhmmer==0.11.2
 drf-spectacular
 git+https://github.com/utdal/py-mfdca.git
 django-cors-headers
