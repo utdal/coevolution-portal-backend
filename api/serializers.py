@@ -30,6 +30,13 @@ class TaskSerializer(serializers.ModelSerializer):
             "successful",
         ]
 
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        if ret.get('state') == 'SUCCESS' or ret.get('successful'):
+            ret['percent'] = 100.0
+            ret['message'] = ""
+        return ret
+
 
 class SeedSerializer(serializers.ModelSerializer):
     class Meta:
