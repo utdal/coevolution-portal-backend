@@ -11,5 +11,8 @@ RUN pip install -r requirements.txt -U
 
 COPY . .
 
+RUN chmod +x ./entrypoint.sh
+
 EXPOSE 8000
-CMD [ "python3", "manage.py", "runserver", "0.0.0.0:8000" ]
+ENTRYPOINT [ "./entrypoint.sh" ]
+CMD [ "sh", "-c", "if [ \"$DJANGO_DEBUG\" = \"True\" ]; then python3 manage.py runserver 0.0.0.0:8000; else gunicorn backend.wsgi:application --bind 0.0.0.0:8000; fi" ]
