@@ -193,7 +193,7 @@ def format_aligned_seqs(aligned_obj):
     """
     formatted = {}
     for idx, item in enumerate(aligned_obj.names):
-        seq = re.sub(r"[a-z].", "", aligned_obj.alignment[idx])
+        seq = re.sub(r"[a-z.]", "", aligned_obj.alignment[idx])
         formatted[item.decode().replace(">","")] = seq
     return formatted
 
