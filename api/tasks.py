@@ -1,40 +1,41 @@
-from django.conf import settings
-from django.utils import timezone
-from django.core.files import File
-from django.core.files.base import ContentFile
-from celery import shared_task, states
-import time
-from typing import Union, TextIO
-import tempfile
-from dca import dca_class
-import numpy as np
+import io
 import json
 import os
-import io
-from .SEEC.seec import SEECnt 
+import tempfile
+import time
 import uuid
+from typing import TextIO, Union
+
+import numpy as np
+from celery import shared_task, states
+from dca import dca_class
+from dcatoolkit import StructureInformation
+from django.conf import settings
+from django.core.files import File
+from django.core.files.base import ContentFile
+from django.utils import timezone
+from rest_framework.exceptions import ValidationError
 
 from .models import (
+    PDB,
+    APIDataObject,
     APITaskMeta,
     CeleryTaskMeta,
-    APIDataObject,
-    MultipleSequenceAlignment,
     DirectCouplingAnalysis,
-    SeedSequence,
+    EvolutionSimulation,
     MappedDi,
+    MultipleSequenceAlignment,
+    SeedSequence,
     StructureContacts,
-    PDB,
-    EvolutionSimulation
 )
-from .taskutils import APITaskBase
 from .msautils import (
-    hmmsearch_from_seed,
     filter_by_consecutive_gaps,
     get_mapped_residues,
     get_msa_stats,
+    hmmsearch_from_seed,
 )
-from dcatoolkit import StructureInformation
-from rest_framework.exceptions import ValidationError
+from .SEEC.seec import SEECnt
+from .taskutils import APITaskBase
 
 
 @shared_task(base=APITaskBase, bind=True)

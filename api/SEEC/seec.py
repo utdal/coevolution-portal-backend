@@ -1,10 +1,12 @@
-from dca.dca_class import dca
-from .genetics import GeneticsTools
+from io import StringIO
+
 import numpy as np
 from Bio import SeqIO
-from io import StringIO
-from dca.dca_functions import return_Hamiltonian, create_numerical_MSA
+from dca.dca_class import dca
+from dca.dca_functions import create_numerical_MSA, return_Hamiltonian
 from numba import jit
+
+from .genetics import GeneticsTools
 
 
 @jit(nopython=True)

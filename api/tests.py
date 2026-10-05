@@ -1,18 +1,19 @@
-from django.test import TestCase
-from django.core.files.base import ContentFile
 import numpy as np
-from .tasks import (
-    generate_msa_task,
-    compute_dca_task,
-    map_residues_task,
-    generate_contacts_task,
-)
+from django.core.files.base import ContentFile
+from django.test import TestCase
+
 from .models import (
-    SeedSequence,
-    MultipleSequenceAlignment,
     DirectCouplingAnalysis,
     MappedDi,
+    MultipleSequenceAlignment,
+    SeedSequence,
     StructureContacts,
+)
+from .tasks import (
+    compute_dca_task,
+    generate_contacts_task,
+    generate_msa_task,
+    map_residues_task,
 )
 
 

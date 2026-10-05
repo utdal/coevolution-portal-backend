@@ -1,11 +1,12 @@
+import io
+import uuid
+from pathlib import PurePath
+
+import numpy as np
 from django.db import models
 from django.forms import ValidationError
 from django.utils import timezone
 from rest_framework import serializers
-import io
-import numpy as np
-from pathlib import PurePath
-import uuid
 
 
 def get_user_spesific_path(instance, filename, subfolder=None, suffix=None):

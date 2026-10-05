@@ -1,16 +1,16 @@
 from rest_framework import serializers
 
-from .modelutils import NdarraySerializerField
 from .models import (
-    APITaskMeta,
-    MappedDi,
-    SeedSequence,
     PDB,
-    MultipleSequenceAlignment,
+    APITaskMeta,
     DirectCouplingAnalysis,
+    EvolutionSimulation,
+    MappedDi,
+    MultipleSequenceAlignment,
+    SeedSequence,
     StructureContacts,
-    EvolutionSimulation
 )
+from .modelutils import NdarraySerializerField
 
 
 class TaskSerializer(serializers.ModelSerializer):

@@ -1,50 +1,52 @@
-from django.http import HttpResponse
-from django.shortcuts import render
-from django.utils import timezone
-from django.conf import settings
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status, parsers, mixins, viewsets
-from rest_framework.decorators import action
-from rest_framework.parsers import MultiPartParser, FormParser
-import tempfile
-from drf_spectacular.utils import extend_schema
-from .ProSSpeC.calculate_Hamiltonian import calc_Hamiltonian
-import pandas as pd
-from io import BytesIO
 import json
-from django.shortcuts import get_object_or_404
+import tempfile
+from io import BytesIO
+
+import pandas as pd
+from django.conf import settings
 from django.core.files import File
-from .serializers import (
-    GenerateContactsSerializer,
-    StructureContactsSerializer,
-    TaskSerializer,
-    GenerateMSASerializer,
-    SeedSerializer,
-    PDBSerializer,
-    MSASerializer,
-    ComputeDCASerializer,
-    DCASerializer,
-    MapResiduesSerializer,
-    MappedDiSerializer,
-    CalculateHamiltonianSerializer,
-    Align2HMMSerializer,
-    EvolutionSimulationSerializer,
-)
+from django.http import HttpResponse
+from django.shortcuts import get_object_or_404, render
+from django.utils import timezone
+from drf_spectacular.utils import extend_schema
+from rest_framework import mixins, parsers, status, viewsets
+from rest_framework.decorators import action
+from rest_framework.parsers import FormParser, MultiPartParser
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
 from .models import (
-    APITaskMeta,
-    SeedSequence,
     PDB,
+    APITaskMeta,
+    DirectCouplingAnalysis,
+    EvolutionSimulation,
     MappedDi,
     MultipleSequenceAlignment,
-    DirectCouplingAnalysis,
+    SeedSequence,
     StructureContacts,
-    EvolutionSimulation,
+)
+from .msautils import align_sequences_with_hmm
+from .ProSSpeC.calculate_Hamiltonian import calc_Hamiltonian
+from .serializers import (
+    Align2HMMSerializer,
+    CalculateHamiltonianSerializer,
+    ComputeDCASerializer,
+    DCASerializer,
+    EvolutionSimulationSerializer,
+    GenerateContactsSerializer,
+    GenerateMSASerializer,
+    MappedDiSerializer,
+    MapResiduesSerializer,
+    MSASerializer,
+    PDBSerializer,
+    SeedSerializer,
+    StructureContactsSerializer,
+    TaskSerializer,
 )
 from .tasks import (
+    compute_dca_task,
     generate_contacts_task,
     generate_msa_task,
-    compute_dca_task,
     map_residues_task,
     run_evolution_simulation,
 )
@@ -53,10 +55,9 @@ from .viewutils import (
     # UsersUnexpiredReadOnlyModelViewSet,
     APIObjectModelViewSet,
     UsersCreateModelMixin,
-    get_request_user,
     get_request_session,
+    get_request_user,
 )
-from .msautils import align_sequences_with_hmm
 
 
 def api_home(request):

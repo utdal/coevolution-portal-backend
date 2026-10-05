@@ -1,15 +1,16 @@
-from django.db import models
+import uuid
+from functools import partial
+
+import celery
 from django.conf import settings
 from django.contrib.auth.models import User
-import celery
-from functools import partial
-import uuid
+from django.db import models
 
 from .modelutils import (
     NdarrayField,
-    get_user_spesific_path,
-    get_random_uuid,
     get_future_date,
+    get_random_uuid,
+    get_user_spesific_path,
 )
 
 

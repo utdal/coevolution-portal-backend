@@ -1,26 +1,30 @@
-from django.urls import path, include
-from rest_framework.urlpatterns import format_suffix_patterns
+from django.urls import include, path
+from drf_spectacular.views import (
+    SpectacularAPIView,
+    SpectacularRedocView,
+    SpectacularSwaggerView,
+)
 from rest_framework.routers import DefaultRouter
-from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
+from rest_framework.urlpatterns import format_suffix_patterns
 
 from .views import (
-    api_home,
-    hello_world,
-    demo,
-    TaskViewSet,
-    SeedViewSet,
-    PDBViewSet,
-    MSAViewSet,
-    DCAViewSet,
-    MappedDiViewSet,
-    StructureContactsViewSet,
-    GenerateMsa,
-    ComputeDca,
-    MapResidues,
-    GenerateContacts,
-    CalculateHamiltonian,
     AlignSequences2HMM,
-    EvolutionSimulationViewSet
+    CalculateHamiltonian,
+    ComputeDca,
+    DCAViewSet,
+    EvolutionSimulationViewSet,
+    GenerateContacts,
+    GenerateMsa,
+    MappedDiViewSet,
+    MapResidues,
+    MSAViewSet,
+    PDBViewSet,
+    SeedViewSet,
+    StructureContactsViewSet,
+    TaskViewSet,
+    api_home,
+    demo,
+    hello_world,
 )
 
 urlpatterns = [

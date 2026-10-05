@@ -1,9 +1,10 @@
-from django.utils import timezone
-import celery
-import uuid
 import functools
+import uuid
 
-from .models import User, APITaskMeta
+import celery
+from django.utils import timezone
+
+from .models import APITaskMeta, User
 
 
 class APITaskBase(celery.Task):

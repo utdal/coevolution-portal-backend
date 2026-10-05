@@ -1,13 +1,27 @@
-from typing import Optional, Union
-from numpy import percentile
-import numpy.typing as npt
 import io
 import re
-from dcatoolkit import DirectInformationData, ResidueAlignment, StructureInformation
-from dcatoolkit import MSATools
-from pyhmmer.plan7 import Background, HMM, Profile, OptimizedProfile, HMMFile, Pipeline, Builder
-from pyhmmer.easel import MSA, TextMSA, MSAFile, Alphabet, TextSequence, SequenceFile
+from typing import Optional, Union
+
+import numpy.typing as npt
+from dcatoolkit import (
+    DirectInformationData,
+    MSATools,
+    ResidueAlignment,
+    StructureInformation,
+)
+from numpy import percentile
+from pyhmmer.easel import MSA, Alphabet, MSAFile, SequenceFile, TextMSA, TextSequence
 from pyhmmer.hmmer import hmmalign, hmmscan
+from pyhmmer.plan7 import (
+    HMM,
+    Background,
+    Builder,
+    HMMFile,
+    OptimizedProfile,
+    Pipeline,
+    Profile,
+)
+
 
 def generate_hmm_and_profiles(seed_sequence_filepath: str, seed_name: str) -> tuple[Background, HMM, Profile, OptimizedProfile]:
     """
@@ -194,13 +208,13 @@ def format_aligned_seqs(aligned_obj):
     formatted = {}
     for idx, item in enumerate(aligned_obj.names):
         seq = re.sub(r"[a-z.]", "", aligned_obj.alignment[idx])
-        formatted[item.decode().replace(">","")] = seq
+        formatted[item.replace(">","")] = seq
     return formatted
 
 
 def combine_easel_TextMSA(text_msa1: TextMSA, text_msa2: TextMSA):
     
-    all_sequence_names: list[bytes] = []
+    all_sequence_names: list[str] = []
     all_sequence_alignments = []
     for text_sequence in text_msa1.sequences:
         all_sequence_names.append(text_sequence.name)
@@ -209,7 +223,7 @@ def combine_easel_TextMSA(text_msa1: TextMSA, text_msa2: TextMSA):
     all_sequence_alignments = text_msa1.alignment + text_msa2.alignment
 
     for name, sequence in zip(all_sequence_names, all_sequence_alignments):
-        print(f">{name.decode()}")
+        print(f">{name}")
         print(sequence)
 
 

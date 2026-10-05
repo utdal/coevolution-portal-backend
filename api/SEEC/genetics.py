@@ -1,6 +1,7 @@
-import numpy as np
-from scipy.spatial.distance import squareform, pdist
 from typing import Union
+
+import numpy as np
+from scipy.spatial.distance import pdist, squareform
 
 genetic_code = {
     "A": ["GCT", "GCC", "GCA", "GCG"],
