@@ -25,7 +25,7 @@ aa2num = {
 }
 
 
-def calc_Hamiltonian(seq_list, coupling_tbl, lf_tbl):
+def calc_Hamiltonian(seq_list, coupling_tbl, lf_tbl, indexCutoff=233):
     H = np.zeros(len(seq_list))
     
     for seq_idx, seq in enumerate(seq_list):
@@ -40,6 +40,7 @@ def calc_Hamiltonian(seq_list, coupling_tbl, lf_tbl):
         
         # Create all pairs of positions efficiently
         pairs = [(i, j) for i in range(len(nums)) for j in range(i + 1, len(nums))]
+        pairs = [p for p in pairs if p[0] < indexCutoff and p[1] >= indexCutoff]
         j_indices = [21 * pair[1] + nums[pair[1]] for pair in pairs]
         i_indices_pairs = [21 * pair[0] + nums[pair[0]] for pair in pairs]
         
