@@ -1,5 +1,6 @@
 import io
 import re
+from pathlib import Path
 from typing import Optional, Union
 
 import numpy.typing as npt
@@ -267,7 +268,7 @@ def get_mapped_residues(DI_arr: npt.NDArray, seed_name: str, seed_sequence_filep
     return mapped_residues
 
 
-def filter_by_consecutive_gaps(input_source: Union[str, io.IOBase], output_source: Union[str, io.IOBase], perc_max_gaps: Optional[int]) -> None:
+def filter_by_consecutive_gaps(input_source: Union[str, io.IOBase], output_source: Union[str, Path, io.TextIOBase], perc_max_gaps: Optional[int], max_seqs: int) -> None:
     """
     Filters specified input source by the number of maximum continuous gaps supplied and writes to output source.
 
@@ -277,9 +278,11 @@ def filter_by_consecutive_gaps(input_source: Union[str, io.IOBase], output_sourc
         Filepath (if str) where the MSA to be filtered is located. If the input source is a IOBase object, then it will be considered the MSA.
     output_source : str or io.IOBase
         Output filepath to write the filtered MSA to. If the output source is an IOBase object, then the MSA will be written to the IOBase object.
-    max_gaps : int, optional
-        Number of maximum continuous gaps that the final MSA should be allowed to have. If set to None, it will not filter based off of any maximum number of continuous gaps, but will clean the afa.
-        
+    perc_max_gaps : int, optional
+        Maximum run of continuous gaps allowed in a sequence, as a percentage of the number of residues in the first sequence of the MSA. If None or 0, it will not filter based off of any maximum number of continuous gaps, but will clean the afa.
+    max_seqs : int
+        Maximum number of sequences kept in the output MSA. Sequences beyond this count, after gap filtering, are dropped in their existing order.
+
     Returns
     -------
     None
@@ -291,6 +294,7 @@ def filter_by_consecutive_gaps(input_source: Union[str, io.IOBase], output_sourc
     else:
         max_gaps = None
     output_MSA = MSATools(input_MSA.filter_by_continuous_gaps(max_gaps))
+    output_MSA = MSATools(output_MSA.MSA[:max_seqs])
     output_MSA.write(output_source)
 
     

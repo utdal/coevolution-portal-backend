@@ -67,7 +67,7 @@ def generate_msa_task(self, seed, msa_name=None, E=None, perc_max_gaps=None):
 
     preprocessed_file = io.BytesIO()
     preprocessed_msa.write(preprocessed_file, "afa")
-    filter_by_consecutive_gaps(preprocessed_file, msa.fasta.path, perc_max_gaps)
+    filter_by_consecutive_gaps(preprocessed_file, msa.fasta.path, perc_max_gaps, 50000)
 
     msa.quality = MultipleSequenceAlignment.Qualities.GOOD
     rows, cols = get_msa_stats(msa.fasta.path) 
