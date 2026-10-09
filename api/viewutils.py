@@ -1,5 +1,5 @@
 from django.utils import timezone
-from rest_framework import mixins, permissions, viewsets
+from rest_framework import mixins, viewsets
 
 
 def get_request_user(request):

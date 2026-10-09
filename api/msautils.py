@@ -8,9 +8,7 @@ from dcatoolkit import (
     DirectInformationData,
     MSATools,
     ResidueAlignment,
-    StructureInformation,
 )
-from numpy import percentile
 from pyhmmer.easel import MSA, Alphabet, MSAFile, SequenceFile, TextMSA, TextSequence
 from pyhmmer.hmmer import hmmalign, hmmscan
 from pyhmmer.plan7 import (
