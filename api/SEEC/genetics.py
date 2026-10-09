@@ -1,5 +1,3 @@
-from typing import Union
-
 import numpy as np
 from scipy.spatial.distance import pdist, squareform
 
@@ -78,7 +76,7 @@ class GeneticsTools:
     def parseProtein(self, protein_seq: str) -> np.array:
         return np.array([self.aa_code[aa] for aa in protein_seq], dtype=np.int32)
 
-    def isMutable(self, currentCodon: int, proposalAA: int) -> Union[bool, int]:
+    def isMutable(self, currentCodon: int, proposalAA: int) -> bool | int:
         """Check if current codon is one mutation away from producing the proposed amino acid.
         If possible, return a [true, newCodon]. If not, return [false, currentCodon]."""
         distances = self.distance_matrix[currentCodon, self.genetic_code[proposalAA]]

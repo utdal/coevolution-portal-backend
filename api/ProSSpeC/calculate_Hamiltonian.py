@@ -35,8 +35,8 @@ def calc_Hamiltonian(seq_list, coupling_tbl, lf_tbl, indexCutoff=233):
         H[seq_idx] += np.sum([lf_tbl.iloc[num, pos] for pos, num in enumerate(nums)])
         
         # Compute all coupling pairs at once
-        positions = np.arange(len(nums))
-        i_indices = [21 * pos + nums[pos] for pos in positions]
+        # positions = np.arange(len(nums))
+        # i_indices = [21 * pos + nums[pos] for pos in positions]
         
         # Create all pairs of positions efficiently
         pairs = [(i, j) for i in range(len(nums)) for j in range(i + 1, len(nums))]

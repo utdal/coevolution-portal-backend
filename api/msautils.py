@@ -1,7 +1,6 @@
 import io
 import re
 from pathlib import Path
-from typing import Optional, Union
 
 import numpy.typing as npt
 from dcatoolkit import (
@@ -57,7 +56,7 @@ def generate_hmm_and_profiles(seed_sequence_filepath: str, seed_name: str) -> tu
     raise ValueError("Invalid hmm data produced.")
 
 
-def hmmsearch_from_seed(seed_sequence_filepath: str, seed_name: str, E: Optional[float], T: Optional[float] = None, database_path: str="databases/uniprot_sprot_trembl.fasta.gz") -> TextMSA:
+def hmmsearch_from_seed(seed_sequence_filepath: str, seed_name: str, E: float | None, T: float | None = None, database_path: str="databases/uniprot_sprot_trembl.fasta.gz") -> TextMSA:
     """
     Generates an HMM and associated files needed and produces an MSA using hmmsearch functionality.
 
@@ -119,7 +118,7 @@ def produce_alignment_to_protein(seed_name: str, seed_sequence_filepath: str, pr
         ResidueAlignment object generated from input of parameters returned from hmmscan with the same HMM used to produce the MSA and the target's protein sequence.
     """
     aa_alphabet = Alphabet.amino()
-    background, hmm, profile, optimized_profile = generate_hmm_and_profiles(seed_sequence_filepath, seed_name)
+    background, hmm, _profile, _optimized_profile = generate_hmm_and_profiles(seed_sequence_filepath, seed_name)
     protein_query = TextSequence(name=f"{protein_name}".encode(), sequence=protein_sequence).digitize(alphabet=aa_alphabet)
     hits = list(hmmscan(queries=protein_query, profiles=[hmm], background=background))
     # Queries refers to the protein sequence, which yields the target of the alignment.
@@ -132,9 +131,9 @@ def produce_alignment_to_protein(seed_name: str, seed_sequence_filepath: str, pr
     return ResidueAlignment(_to_str(best_alignment.hmm_name), _to_str(best_alignment.target_name), best_alignment.hmm_from, best_alignment.target_from, best_alignment.hmm_sequence, best_alignment.target_sequence, valid_residues=valid_residues)
 
 
-def align_sequences_with_hmm(sequences: Union[list[str], str, io.IOBase], 
-                             hmm: Union[str, io.BytesIO], 
-                             headers: Optional[Union[str, list[str]]] = None) -> dict:
+def align_sequences_with_hmm(sequences: list[str] | str | io.IOBase, 
+                             hmm: str | io.BytesIO, 
+                             headers: str | list[str] | None = None) -> dict:
     """
 
     Sequences are aligned to profile hmm. Sequences may be formatted in multiple ways, but if
@@ -266,7 +265,7 @@ def get_mapped_residues(DI_arr: npt.NDArray, seed_name: str, seed_sequence_filep
     return mapped_residues
 
 
-def filter_by_consecutive_gaps(input_source: Union[str, io.IOBase], output_source: Union[str, Path, io.TextIOBase], perc_max_gaps: Optional[int], max_seqs: int) -> None:
+def filter_by_consecutive_gaps(input_source: str | io.IOBase, output_source: str | Path | io.TextIOBase, perc_max_gaps: int | None, max_seqs: int) -> None:
     """
     Filters specified input source by the number of maximum continuous gaps supplied and writes to output source.
 
