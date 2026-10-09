@@ -1,4 +1,6 @@
-FROM python:3.10-slim
+FROM python:3.12-slim
+
+COPY --from=ghcr.io/astral-sh/uv:0.12.5 /uv /uvx /bin/
 
 RUN groupadd -r celeryuser && useradd -r -g celeryuser celeryuser
 
@@ -6,8 +8,14 @@ WORKDIR /usr/src/app
 
 RUN apt-get update && apt-get install -y git gcc g++ gzip
 
-COPY requirements.txt requirements.txt
-RUN pip install -r requirements.txt -U
+ENV UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    UV_PYTHON_DOWNLOADS=never \
+    UV_PROJECT_ENVIRONMENT=/opt/venv \
+    PATH="/opt/venv/bin:$PATH"
+
+COPY pyproject.toml uv.lock .python-version ./
+RUN uv sync --frozen --no-dev
 
 COPY . .
 

@@ -1,0 +1,32 @@
+[project]
+name = "coevolution-portal-backend"
+version = "0.1.0"
+description = "Django/Celery backend for the coevolution portal."
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "django>=5.2,<6",
+    "celery",
+    "redis",
+    "djangorestframework",
+    "django-cleanup",
+    "drf-spectacular",
+    "django-cors-headers",
+    "gunicorn",
+    "numpy",
+    "pandas>=2.1,<3",
+    "scipy",
+    "numba",
+    "biopython",
+    "pyhmmer>=0.12.1",
+    "dcatoolkit>=0.4.0",
+    "dca",
+]
+
+[tool.uv]
+# Application, not an installable package.
+package = false
+# Deployed in Linux containers only; pyhmmer and py-mfdca's hmm_tools are Unix-oriented.
+environments = ["sys_platform == 'linux'"]
+
+[tool.uv.sources]
+dca = { git = "https://github.com/utdal/py-mfdca.git" }

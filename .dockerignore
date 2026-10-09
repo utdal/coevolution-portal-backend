@@ -32,6 +32,9 @@ yarn-error.log
 .vscode/
 .idea/
 
+# Local virtualenv (the image builds its own with uv)
+.venv/
+
 # Git
 .git/
 .gitignore
