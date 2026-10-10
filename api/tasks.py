@@ -26,6 +26,7 @@ from .models import (
 )
 from .msautils import (
     filter_by_consecutive_gaps,
+    get_first_sequence,
     get_mapped_residues,
     get_msa_stats,
     hmmsearch_from_seed,
@@ -130,15 +131,17 @@ def map_residues_task(self, dca_id, pdb_id, chain1, chain2, auth_chain_id_suppli
             raise self.retry(countdown=60)
 
     dca = DirectCouplingAnalysis.objects.get(id=dca_id)
-    # assert dca.msa and dca.msa.seed, "The DCA must have a seed"
     if dca.msa.seed:
         seed = dca.msa.seed
     else:
+        # Uploaded MSA: use its first sequence (gaps kept) as the seed. An HMM built from the
+        # whole MSA drops majority-gap columns and shifts the mapping.
+        seed_name, aligned_seed = get_first_sequence(dca.msa.fasta.path)
         seed = SeedSequence.objects.create(
-            name="Not a great seed name",
-            fasta=dca.msa.fasta
+            name=seed_name[:200],
+            fasta=ContentFile(f">{seed_name}\n{aligned_seed}\n", name=seed_name)
         )
-    
+
     self.set_progress(message="Mapping residues", percent=10)
     if len(pdb_id) <= 8:
         structure_information = StructureInformation.fetch_pdb(pdb_id, 'mmcif')

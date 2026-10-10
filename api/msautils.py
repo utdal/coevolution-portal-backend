@@ -2,6 +2,7 @@ import io
 import re
 from pathlib import Path
 
+import numpy as np
 import numpy.typing as npt
 from dcatoolkit import (
     DirectInformationData,
@@ -238,7 +239,7 @@ def get_mapped_residues(DI_arr: npt.NDArray, seed_name: str, seed_sequence_filep
     seed_name : str
         The name of the seed supplied. Used to label the domain portion of the alignment.
     seed_sequence_filepath : str
-        Filepath of the seed sequence used to generate the HMM & Profiles needed to produce the MSA.
+        Filepath of the single seed sequence used to generate the HMM & Profiles needed to produce the MSA. It may be an aligned row from the MSA (with gaps); DI indices are MSA columns, so they are converted to positions in the ungapped seed, and pairs on the seed's gap columns are dropped.
     protein_name : str
         The name of the protein supplied. Used to label the target portion of the alignment.
     protein_sequence_1 : str
@@ -258,6 +259,16 @@ def get_mapped_residues(DI_arr: npt.NDArray, seed_name: str, seed_sequence_filep
     mapped_residues : numpy.ndarray
         The residues corresponding to the MSA generated from the HMM profile mapped to the structure supplied.
     """
+    # A gapped seed (an aligned MSA row) needs its DI columns converted: the HMM built from it
+    # drops the gap columns, so alignment positions are ungapped seed positions.
+    _, aligned_seed = get_first_sequence(seed_sequence_filepath)
+    if not aligned_seed.isalpha():
+        column_to_position = get_column_to_position(aligned_seed)
+        DI_arr = np.array([
+            (column_to_position[int(i)], column_to_position[int(j)], di)
+            for i, j, di in DI_arr
+            if int(i) in column_to_position and int(j) in column_to_position
+        ])
     res_align_1 = produce_alignment_to_protein(protein_sequence=protein_sequence_1, seed_sequence_filepath=seed_sequence_filepath, seed_name=seed_name, protein_name=protein_name, valid_residues=valid_residues_1)
     res_align_2 = produce_alignment_to_protein(protein_sequence=protein_sequence_2, seed_sequence_filepath=seed_sequence_filepath, seed_name=seed_name, protein_name=protein_name, valid_residues=valid_residues_2)
     DI_data = DirectInformationData.load_as_ndarray(DI_arr)
@@ -313,4 +324,47 @@ def get_msa_stats(msa_path: str) -> tuple[int, int]:
     rows = len(msa)
     cols = len(msa.MSA[0][1])
     return rows, cols
+
+
+def get_first_sequence(msa_path: str) -> tuple[str, str]:
+    """
+    Get the name and aligned sequence (gaps kept) of the first sequence in an MSA or FASTA file.
+
+    Parameters
+    ----------
+    msa_path : str
+        Filepath of Multiple Sequence Alignment or single-sequence FASTA.
+
+    Returns
+    -------
+    name, aligned_sequence : tuple[str, str]
+        Name from the first header and the first sequence as it appears in the alignment.
+    """
+    msa = MSATools.load_from_file(msa_path)
+    header, aligned_sequence = msa.MSA[0]
+    name = header.lstrip(">").split()[0]
+    return name, aligned_sequence
+
+
+def get_column_to_position(aligned_sequence: str) -> dict[int, int]:
+    """
+    Map MSA columns to residue positions in an aligned sequence.
+
+    Parameters
+    ----------
+    aligned_sequence : str
+        Sequence as it appears in an alignment, possibly containing gaps.
+
+    Returns
+    -------
+    dict of {int : int}
+        1-indexed MSA column to 1-indexed position in the ungapped sequence. Columns where the sequence has a gap are absent.
+    """
+    column_to_position = {}
+    position = 0
+    for column, residue in enumerate(aligned_sequence, start=1):
+        if residue.isalpha():
+            position += 1
+            column_to_position[column] = position
+    return column_to_position
 
