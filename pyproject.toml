@@ -30,3 +30,11 @@ environments = ["sys_platform == 'linux'"]
 
 [tool.uv.sources]
 dca = { git = "https://github.com/utdal/py-mfdca.git" }
+
+[tool.pyrefly]
+preset = "strict"
+
+[dependency-groups]
+dev = [
+    "django-stubs>=6.1.2",
+]
