@@ -126,10 +126,30 @@ class StructureContactsSerializer(serializers.ModelSerializer):
 
 
 class GenerateMSASerializer(serializers.Serializer):
-    seed = serializers.CharField(max_length=700)
+    seed = serializers.CharField(max_length=10000)
     msa_name = serializers.CharField(max_length=255, required=False)
     E = serializers.FloatField(required=False)
     perc_max_gaps = serializers.FloatField(required=False)
+
+    def validate_seed(self, value):
+        """
+        Accept a single FASTA record and normalize it to its header line followed by the sequence on
+        one uppercased line.
+        """
+        lines = [line.strip() for line in value.strip().splitlines() if line.strip()]
+        if not lines or not lines[0].startswith(">") or not lines[0][1:].strip():
+            raise serializers.ValidationError("Seed must be in FASTA format, starting with a header line such as >my_protein.")
+        if any(line.startswith(">") for line in lines[1:]):
+            raise serializers.ValidationError("Seed must be a single FASTA record; supply alignments as a Full MSA instead.")
+
+        sequence = "".join(lines[1:]).upper()
+        if not sequence:
+            raise serializers.ValidationError("Seed contains no sequence.")
+        if not sequence.isalpha():
+            raise serializers.ValidationError("Seed sequence may only contain amino acid letters.")
+        if len(sequence) > 700:
+            raise serializers.ValidationError(f"Seed sequence must be at most 700 residues (got {len(sequence)}).")
+        return f"{lines[0]}\n{sequence}"
 
 class ComputeDCASerializer(serializers.Serializer):
     msa_id = serializers.UUIDField()

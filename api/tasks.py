@@ -41,9 +41,10 @@ def generate_msa_task(self, seed, msa_name=None, E=None, perc_max_gaps=None):
     if msa_name is None:
         msa_name = self.get_task_id()
 
-    seed = seed.replace("\n", "")
+    header, *sequence_lines = seed.splitlines()
+    sequence = "".join(sequence_lines)
 
-    f = ContentFile(f">{msa_name}\n{seed}", name=msa_name)
+    f = ContentFile(f"{header}\n{sequence}\n", name=msa_name)
     seedObj = SeedSequence.objects.create(
         name=msa_name, fasta=f
     )
