@@ -1,3 +1,5 @@
+import re
+
 from rest_framework import serializers
 
 from .models import (
@@ -83,6 +85,46 @@ class MSASerializer(serializers.ModelSerializer):
             "quality",
         ]
         read_only_fields = ["id", "user", "created", "expires"]
+
+    def validate_fasta(self, value):
+        """
+        Check that the uploaded file is an aligned FASTA: text, at least two records, only letters,
+        gaps ('-' or '.'), and every sequence the same length.
+        """
+        if value is None:
+            raise serializers.ValidationError("An MSA file is required.")
+        try:
+            text = value.read().decode("utf-8")
+        except UnicodeDecodeError:
+            raise serializers.ValidationError("MSA must be a text FASTA file.")
+        finally:
+            value.seek(0)
+
+        records = []
+        for line in text.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            if line.startswith(">"):
+                records.append([])
+            elif not records:
+                raise serializers.ValidationError("MSA must be in FASTA format, starting with a header line.")
+            else:
+                records[-1].append(line)
+        sequences = ["".join(record) for record in records]
+
+        if len(sequences) < 2:
+            raise serializers.ValidationError("MSA must contain at least 2 sequences.")
+        if not all(sequences):
+            raise serializers.ValidationError("Every MSA record must have a sequence.")
+        if not all(re.fullmatch(r"[A-Za-z.\-]+", sequence) for sequence in sequences):
+            raise serializers.ValidationError("MSA sequences may only contain letters and gaps ('-' or '.').")
+        lengths = {len(sequence) for sequence in sequences}
+        if len(lengths) > 1:
+            raise serializers.ValidationError(
+                f"MSA sequences must all be the same length (found lengths {min(lengths)} to {max(lengths)}). Is the file aligned?"
+            )
+        return value
 
 
 class DCASerializer(serializers.ModelSerializer):
