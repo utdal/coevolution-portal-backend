@@ -189,3 +189,11 @@ TASK_EXPIRATION = timedelta(days=1)
 DELETE_EXPIRED_DATA = False
 HMM_DATABASE = BASE_DIR / 'databases/uniprot_sprot_trembl.fasta.gz'
 DATA_UPLOAD_MAX_MEMORY_SIZE = 2621440000  # 2500 MB
+# Sharded search: one zstd FASTA shard per Celery task, merged afterwards.
+HMM_DATABASE_SHARDS = BASE_DIR / 'databases/sharded_uniprot'
+HMM_DATABASE_SHARD_PATTERN = '*.fasta.zst'
+# Total sequences across all shards; E-values are computed against this. Must match the shard set.
+# Override in .env (HMM_DATABASE_Z=...) when the shards change, then restart.
+HMM_DATABASE_Z = int(os.getenv('HMM_DATABASE_Z', '252761752'))
+# Switch between the sharded search and the single-file search (HMM_DATABASE). Set in .env, then restart.
+HMM_SEARCH_SHARDED = os.getenv('HMM_SEARCH_SHARDED', 'False') == 'True'

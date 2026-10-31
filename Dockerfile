@@ -25,6 +25,10 @@ FROM python:3.12-slim
 
 RUN groupadd -r celeryuser && useradd -r -g celeryuser celeryuser
 
+# zstd decompresses the sharded sequence database into a named pipe for hmmsearch.
+RUN apt-get update && apt-get install -y --no-install-recommends zstd \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
